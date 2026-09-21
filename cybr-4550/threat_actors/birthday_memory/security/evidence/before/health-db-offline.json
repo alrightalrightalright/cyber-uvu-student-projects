@@ -1,0 +1,6 @@
+{
+  "time": "2026-09-21T19:15:22.574Z",
+  "request": "GET http://127.0.0.1:4000/api/health",
+  "status": 503,
+  "body": "{\"status\":\"degraded\",\"error\":\"connect ECONNREFUSED 127.0.0.1:5544\"}"
+}

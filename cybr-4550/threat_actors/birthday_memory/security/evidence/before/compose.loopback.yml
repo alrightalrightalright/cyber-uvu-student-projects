@@ -1,0 +1,5 @@
+services:
+  postgres:
+    container_name: candlelight-baseline-db
+    ports: !override
+      - "127.0.0.1:5544:5432"

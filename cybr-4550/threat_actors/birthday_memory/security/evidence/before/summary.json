@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-09-21T19:11:07.714Z",
+  "sourceCommit": "849911eff1503f1aa25aa4a6fa3baa57b29ba41b",
+  "syntheticRecords": 125,
+  "authenticationRequired": false,
+  "unauthenticatedUpdate": 200,
+  "unauthenticatedDelete": 204,
+  "requestedLimit": 10,
+  "actualReturned": 125,
+  "corsAllowOrigin": "*",
+  "sqlInjectionProbeReturnedRows": 0,
+  "wrongTypeAndUnknownOwnerAccepted": 201,
+  "note": "One SQL-injection probe is a negative result for that case only. No generalized claim that injection is impossible. Rate-limit absence is not proven solely by this seed sequence."
+}
