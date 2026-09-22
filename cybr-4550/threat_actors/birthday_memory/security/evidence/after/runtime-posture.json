@@ -1,0 +1,53 @@
+{
+  "capturedAt": "2026-09-22T00:38:08.1508123Z",
+  "containers": [
+    {
+      "service": "app",
+      "image": "sha256:5a60567d8545aed4c46acb3f20faf427a1e8977617bca9eb37433e6c09c24826",
+      "user": "node",
+      "health": "healthy",
+      "readOnly": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "securityOptions": [
+        "no-new-privileges:true"
+      ],
+      "memoryBytes": 268435456,
+      "nanoCpus": 1000000000,
+      "pidsLimit": 100,
+      "portBindings": {
+        "4000/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "4000"
+          }
+        ]
+      },
+      "networks": [
+        "candlelight-secure_database",
+        "candlelight-secure_frontend"
+      ],
+      "identity": "uid=1000(node) gid=1000(node) groups=1000(node)"
+    },
+    {
+      "service": "postgres",
+      "image": "sha256:858752290ab492e12dfafe1e418f2744459b3fef2fdf2d3f8b388b4ed1e6ee07",
+      "user": "postgres",
+      "health": "healthy",
+      "readOnly": true,
+      "capDrop": [
+        "ALL"
+      ],
+      "securityOptions": [
+        "no-new-privileges:true"
+      ],
+      "memoryBytes": 536870912,
+      "nanoCpus": 1000000000,
+      "pidsLimit": 100,
+      "portBindings": {},
+      "networks": "candlelight-secure_database",
+      "identity": "uid=70(postgres) gid=70(postgres) groups=70(postgres)"
+    }
+  ]
+}

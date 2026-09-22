@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "capturedAt": "2026-09-22T00:38:59.355Z",
+  "checks": [
+    "login gate",
+    "valid sign-in",
+    "UI create",
+    "two-account isolation",
+    "literal output encoding",
+    "logout"
+  ],
+  "screenshots": [
+    {
+      "file": "login-after.png",
+      "capturedAt": "2026-09-22T00:38:53.409Z",
+      "url": "http://127.0.0.1:4000/",
+      "description": "Anonymous browser sees sign-in instead of birthday records."
+    },
+    {
+      "file": "alice-private-list.png",
+      "capturedAt": "2026-09-22T00:38:55.392Z",
+      "url": "http://127.0.0.1:4000/",
+      "description": "Alice signed in and created a synthetic birthday through the form."
+    },
+    {
+      "file": "literal-text-test.png",
+      "capturedAt": "2026-09-22T00:38:56.961Z",
+      "url": "http://127.0.0.1:4000/",
+      "description": "Stored markup is rendered as literal text; no img element or event execution."
+    },
+    {
+      "file": "bob-private-list.png",
+      "capturedAt": "2026-09-22T00:38:59.266Z",
+      "url": "http://127.0.0.1:4000/",
+      "description": "Bob has an empty private list while Alice owns a birthday."
+    }
+  ],
+  "pageErrors": []
+}

@@ -1,0 +1,166 @@
+{
+  "capturedAt": "2026-09-22T00:32:14.614Z",
+  "scope": "Local containers and synthetic users only. Separate app instances use the production code and real PostgreSQL; time and rate thresholds are injected where labeled.",
+  "passed": 22,
+  "total": 23,
+  "results": [
+    {
+      "name": "Anonymous list, upcoming, create, update and delete are rejected",
+      "passed": true,
+      "milliseconds": 119
+    },
+    {
+      "name": "Correct password succeeds, session ID rotates, cookie is HttpOnly and SameSite Strict",
+      "passed": true,
+      "milliseconds": 181
+    },
+    {
+      "name": "Incorrect and unknown credentials share generic rejection",
+      "passed": true,
+      "milliseconds": 70
+    },
+    {
+      "name": "Owner can create a birthday",
+      "passed": true,
+      "milliseconds": 13
+    },
+    {
+      "name": "Other user cannot list, change or delete owner record",
+      "passed": false,
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(!list.data.items.some(b => b.id === target))\n"
+    },
+    {
+      "name": "Owner can update and read their record",
+      "passed": true,
+      "milliseconds": 13
+    },
+    {
+      "name": "Wrong type, forged owner, impossible date and long fields are rejected",
+      "passed": true,
+      "milliseconds": 31
+    },
+    {
+      "name": "Oversized body rejected before mutation",
+      "passed": true,
+      "milliseconds": 5
+    },
+    {
+      "name": "Missing, forged and Unicode CSRF tokens are rejected without server errors",
+      "passed": true,
+      "milliseconds": 15
+    },
+    {
+      "name": "Untrusted origin denied; exact allowed origin permits credentialed CORS",
+      "passed": true,
+      "milliseconds": 38
+    },
+    {
+      "name": "Security headers and private no-store responses are present",
+      "passed": true,
+      "milliseconds": 6
+    },
+    {
+      "name": "SQL injection search remains a literal value (negative result)",
+      "passed": true,
+      "milliseconds": 6
+    },
+    {
+      "name": "Pagination limits rows, rejects excessive limits and supports next page",
+      "passed": true,
+      "milliseconds": 204
+    },
+    {
+      "name": "Dedicated DB role cannot create table, escalate role, read or alter audit events",
+      "passed": true,
+      "milliseconds": 84,
+      "evidence": {
+        "role": {
+          "current_user": "birthday_app",
+          "rolsuper": false,
+          "rolcreatedb": false,
+          "rolcreaterole": false
+        },
+        "denied": [
+          {
+            "statement": "CREATE TABLE forbidden_test(id int)",
+            "sqlstate": "42501"
+          },
+          {
+            "statement": "CREATE ROLE forbidden_role",
+            "sqlstate": "42501"
+          },
+          {
+            "statement": "SELECT * FROM audit_events",
+            "sqlstate": "42501"
+          },
+          {
+            "statement": "DELETE FROM audit_events",
+            "sqlstate": "42501"
+          },
+          {
+            "statement": "UPDATE audit_events SET action=action",
+            "sqlstate": "42501"
+          },
+          {
+            "statement": "UPDATE users SET enabled=false WHERE false",
+            "sqlstate": "42501"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Database connection uses TLS; wrong CA and plaintext connections are rejected",
+      "passed": true,
+      "milliseconds": 22,
+      "evidence": {
+        "ssl": true,
+        "version": "TLSv1.3",
+        "cipher": "TLS_AES_256_GCM_SHA384"
+      }
+    },
+    {
+      "name": "Owner deletion succeeds and subsequent update returns not found",
+      "passed": true,
+      "milliseconds": 17,
+      "evidence": {
+        "deletedTarget": 90,
+        "auditVerifiedSeparately": true
+      }
+    },
+    {
+      "name": "Audit failure rolls back the birthday mutation",
+      "passed": true,
+      "milliseconds": 89
+    },
+    {
+      "name": "Logout invalidates the server session",
+      "passed": true,
+      "milliseconds": 5
+    },
+    {
+      "name": "Idle expiry rejects a previously valid session",
+      "passed": true,
+      "milliseconds": 43
+    },
+    {
+      "name": "Absolute expiry rejects a session despite repeated activity",
+      "passed": true,
+      "milliseconds": 259
+    },
+    {
+      "name": "Read and write throttles return 429 (four calls with test threshold three)",
+      "passed": true,
+      "milliseconds": 118
+    },
+    {
+      "name": "Sign-in throttle returns 429 (four calls with test threshold three)",
+      "passed": true,
+      "milliseconds": 157
+    },
+    {
+      "name": "Database outage health message contains no internal details",
+      "passed": true,
+      "milliseconds": 36
+    }
+  ]
+}

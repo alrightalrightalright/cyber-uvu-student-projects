@@ -1,0 +1,7 @@
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+*.pdf binary
+*.png binary
+# Preserve actual tool formatting in evidence instead of normalizing its whitespace.
+security/evidence/** -whitespace

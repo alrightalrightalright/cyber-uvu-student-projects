@@ -11,7 +11,9 @@ const patterns=['db-app-password','db-admin-password','session-secret'].map(n=>f
 patterns.push(...JSON.parse(fs.readFileSync(path.join(dir,'demo-users.json'),'utf8')).map(u=>u.password));
 for(const name of ['ca.key','server.key']) patterns.push(...fs.readFileSync(path.join(dir,name),'utf8').split(/\r?\n/).filter(s=>s.length>=60));
 const leaks=[], defaults=[];
-const check=(buffer,label)=>{const text=buffer.toString();if(patterns.some(p=>text.includes(p)))leaks.push(label);};
+const backupKey=fs.readFileSync(path.join(dir,'backup-key'));
+patterns.push(backupKey.toString('hex'),backupKey.toString('base64'));
+const check=(buffer,label)=>{const text=buffer.toString();if(buffer.includes(backupKey)||patterns.some(p=>text.includes(p)))leaks.push(label);};
 const files=git(['ls-files','--cached','--others','--exclude-standard','-z','.']).toString().split('\0').filter(Boolean);
 for(const file of files) if(fs.existsSync(path.join(root,file))) check(fs.readFileSync(path.join(root,file)),`working:${file}`);
 const commits=git(['-C',gitRoot,'rev-list','--all','--',scope]).toString().trim().split('\n').filter(Boolean);
