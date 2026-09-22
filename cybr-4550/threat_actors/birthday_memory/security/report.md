@@ -4,7 +4,7 @@ Birthday Memory: application security assessment and remediation
 
 Bryan GurrCYBR-4550 - M5: Exploring Bad CodeTrack B - Application Security
 
-September 21, 2026 (Mountain Daylight Time)Version 1.0Classification: PUBLIC - synthetic lab data only
+September 21, 2026 (Mountain Daylight Time)Version 1.1Classification: PUBLIC - synthetic lab data only
 
 Assessment boundary: my own fork, localhost/127.0.0.1 and locally owned Docker containers. No public vulnerable deployment or third-party testing.
 
@@ -16,15 +16,17 @@ Baseline: 849911e | Pre-remediation threat model: c146613Implemented application
 
 # Executive summary
 
-The original Birthday Memory application exposed its main functions without requiring a user to sign in. In a controlled local test, an anonymous caller could read the birthday list, change a record and delete a record. A request for ten records returned all 125 synthetic records. If the original application were made reachable with real personal information, a caller could copy contact details or damage the entire list without stealing a password.
+The original Birthday Memory application let anyone who could reach it read, change and delete the birthday list without signing in. Local tests confirmed each action using fictional records. If deployed with real information, the same behavior could expose contact details, support targeted scams and leave the owner unable to trust the list.
 
-The revised application requires login and gives each account its own private list. Tests confirmed that the owner can create, read, update and delete a birthday, while a second account cannot access that record. Database connections now verify an encrypted connection, and the application uses a limited database account rather than an administrative account. Record changes produce durable audit events. Input checks, request limits, smaller responses and restricted containers reduce additional opportunities for misuse.
+The revised application requires sign-in and keeps each person's list private. Tests confirmed that a user can manage their own records while another user cannot see, change or delete them. The application now connects securely to its database, has fewer administrative powers and keeps a lasting record of changes. Limits on requests and data entry reduce opportunities for disruption.
 
-Verification includes 23 passing API/database test groups, real browser checks and an encrypted backup restored into a separate test database. A deliberately weakened copy failed the ownership test, showing that the test can detect that regression. The original database image had 46 scanner advisory records; the hardened database image had none on the same vulnerability database snapshot. The final application image also had none after an unused build utility was removed. These counts describe scanner results, not proven attacks or a guarantee that the software is safe.
+All 23 groups of automated checks passed. Separate browser checks confirmed the normal sign-in and private-list experience. A deliberately weakened copy failed the access check, showing that the test can detect that mistake. An encrypted backup was successfully restored and matched the original data. Software scans found fewer known problems after unused utilities were removed, but a clean scan cannot establish that a system is safe.
 
-The local demonstration is ready, but the public-release decision is no-ship. The browser still uses HTTP restricted to this computer. Host disk encryption has been specified but not verified, backup keys remain on the lab host, and account recovery, central audit retention and operational monitoring need additional work. A host administrator or a fully compromised application remains a powerful threat.
+Decision: approve the controlled local demonstration; do not approve a public release. Protection of the live storage has been specified but not verified. Backup keys remain on the same computer as the data. Secure public browser connections, account recovery and independent monitoring still need verification. Someone with control of the host computer remains able to reach sensitive information.
 
-The next investment should verify trusted browser HTTPS, encrypted storage and separate recovery-key custody, then establish account and monitoring procedures. Those operating controls matter more than cosmetic changes or a clean scanner summary. All assessment data was fictional; this work did not identify a real personal-data breach.
+Before real information is accepted, budget about one to two working days to verify secure browser connections, encrypted storage and separately protected recovery keys. Account and monitoring procedures need a further two to four days, followed by one to two days of independent review. These are planning estimates for a small experienced team; costs depend on staffing and the chosen hosting arrangement. The remaining work should be approved and assigned before launch.
+
+All assessment records were fictional. This work found weaknesses in a local teaching application; it did not identify a real personal-data breach.
 
 # Contents
 
@@ -37,32 +39,41 @@ Assets and STRIDE analysis | 6
 Risk method and prioritized findings | 7
 F1: identity and private records | 8
 F2: database trust and permissions | 9
-F3: input and browser defenses | 10
-F4: bounded work and error handling | 11
-F5: accountable changes | 12
-F6: containers and software inventory | 13
-F7: storage and recoverability | 14
+F7: storage and recoverability | 10
+F3: input and browser defenses | 11
+F4: bounded work and error handling | 12
+F5: accountable changes | 13
+F6: containers and software inventory | 14
 Verification and negative results | 15
 Conditional legal and regulatory analysis | 16
 Roadmap and effort estimates | 17
-Ship/no-ship opinion | 18
-Appendix A: original and login screenshots | 19
-Appendix B: private-list screenshots | 20
-Appendix C: raw evidence extracts | 21
-Appendix D: sources and evidence index | 22-23
-Appendix E: AI disclosure and defense plan | 24
+Ship / no-ship opinion | 18
+Appendix A: original and login views | 19
+Appendix B: private-list views | 20
+Appendix C: selected raw evidence | 21
+Appendix D: technical sources | 22
+Appendix D: legal sources and evidence | 23
+Appendix E: AI disclosure | 24
+Appendix F: method and coverage | 25
+Appendix F: secret-sweep evidence | 26
+Appendix G: browser response headers | 27
+Appendix G: API headers and pairing | 28
+Appendix H: complete evidence package | 29
+Appendix H: full HTTP transcripts | 30-142
 
-The main report is 18 pages including cover and contents (15 substantive pages excluding those and the executive summary). Appendices occupy pages 19-24. Evidence paths are relative to the Birthday Memory project unless stated otherwise.
+The main report occupies pages 1-18. Appendices begin on page 19 and are excluded from the assignment page limit. Full recorded transcripts appear at the end; raw tool files are also embedded in the PDF.
 
 # Scope, method and evidence boundaries
 
 ## Authorized scope
 
-Testing covered the local copy of the user-owned fork and its Birthday Memory React client, Express API and PostgreSQL database. Only synthetic names, reserved example.test addresses and fictional phone numbers were used. The original repository includes unrelated coursework; those folders were not assessed or changed. The selected policy is explicit: every account manages only its own birthdays.
+Testing covered the local copy of the user-owned fork and its Birthday Memory React client, Express API and PostgreSQL database. Only synthetic names, reserved example.test addresses and fictional phone numbers were used. Unrelated coursework was excluded from application testing; the secret sweep covered the whole fork. The selected policy is explicit: every account manages only its own birthdays.
 
-## Sequence and tools
+## Assessment framework and sequence
 
-The original code was preserved at 849911e. Baseline evidence was committed as ff54a7e. A data-flow diagram, STRIDE analysis, asset inventory and roadmap were committed at c146613 before API changes. Remediation then proceeded from authentication/ownership to database restrictions, browser and request controls, containers, recovery and regression testing. Docker was cleanly reinstalled at the user's request before the lab.
+The review follows the scoped OWASP WSTG v4.2 workflow: inspect the design and deployment, test authentication/authorization and sessions, probe input and errors, remediate, then repeat negative and authorized-use checks [14]. The coverage map in Appendix F links these areas to actual tests. It records the process followed; it is not a claim that every WSTG test was run.
+
+The original code was preserved at 849911e. Baseline evidence was committed as ff54a7e. A data-flow diagram, STRIDE analysis, asset inventory and roadmap were committed at c146613 before API changes. Remediation then proceeded from authentication/ownership to database restrictions, browser and request controls, containers, recovery and regression testing.
 
 Tool / environment | Purpose
 --- | ---
@@ -71,11 +82,11 @@ Docker Desktop 4.92.0; Engine 29.8.0; WSL2 | Owned local container environment
 Node assertions, HTTP fetch, PostgreSQL queries | Repeatable positive and negative security tests
 Playwright with installed Microsoft Edge | Real browser workflows and original screenshots
 Trivy 0.74.0; npm audit; CycloneDX | Date-specific image/dependency inventory and advisory checks
-Git history review; exact secret-content scan | Traceability and active-secret exposure check
+Gitleaks 8.30.1; exact secret-content scan | Whole-fork working-file and history exposure checks
 
 The baseline API and database were constrained to loopback with an explicit safety harness/Compose override. The original network configuration was reviewed, but reachability from another computer was not tested. This matters: findings establish missing application controls, not internet exposure of this host.
 
-Raw transcripts, source references, container inspection, screenshot metadata and scanner output are preserved separately. Some final evidence uses September 22 UTC timestamps, which are still September 21 in the local Mountain time zone. No sustained denial-of-service, credential attack against outsiders or individual image-CVE exploitation was performed.
+Appendices contain recorded transcripts and embedded raw evidence. September 22 UTC captures are still September 21 locally. No sustained denial-of-service or individual image-CVE exploitation was attempted.
 
 # Architecture and trust boundaries
 
@@ -124,17 +135,17 @@ ID / issue | Before L x I | After L x I | Priority
 --- | --- | --- | ---
 F1 Anonymous read/change/delete; no owner policy | 5 x 5 = 25 | 2 x 5 = 10 | Critical
 F2 Default secret, superuser app role, DB TLS off | 4 x 5 = 20 | 2 x 5 = 10 | Critical
+F7 Storage/recovery controls not established | 3 x 5 = 15 | 3 x 5 = 15 | High / open
 F3 Loose validation and broad browser-origin policy | 4 x 3 = 12 | 2 x 3 = 6 | High
 F4 Unbounded lists, absent throttling, health leak | 4 x 3 = 12 | 2 x 3 = 6 | High
 F5 No durable actor-linked audit trail | 3 x 4 = 12 | 2 x 4 = 8 | High
 F6 Container defaults and advisory-bearing utilities | 3 x 4 = 12 | 2 x 4 = 8 | High
-F7 Storage/recovery controls not established | 3 x 5 = 15 | 3 x 5 = 15 | High / open
 
 Matrix 1 places the original findings by likelihood and impact. After ratings describe future real-data use, not the harmlessness of this lab. F7 remains high because storage and off-host recovery are unverified. F1/F2 retain high impact despite reduced likelihood.
 
-## Technical severity versus business risk
+## Why this order
 
-For F1, an illustrative CVSS v3.1 base vector is AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N, score 9.1 (critical). It models confidentiality/integrity loss through a reachable service without credentials; it deliberately does not claim a demonstrated service outage. Local loopback restriction changes exposure, not the missing check. The remaining findings use the matrix because environmental controls and grouped weaknesses do not map cleanly to a single CVSS vulnerability. FIRST separates technical scoring from organization-specific risk [5].
+F1 outranks F2 because ordinary web requests directly expose or alter all records without credentials. F2 has comparable potential impact but usually requires database reachability or control of the network path. F7 follows because unverified storage/recovery can affect the whole dataset. The remaining score-12 findings are tied; prevention and resource bounds precede detection and container containment. Finding IDs stay stable even though F7 is presented third.
 
 # F1: identity and private records
 
@@ -150,29 +161,49 @@ Login regenerates the session identifier. Cookies are HttpOnly and SameSite=Stri
 
 ## Authorization and proof
 
-server/src/app.js requires a session on birthday routes. server/src/routes.js applies owner_id from that session to list, upcoming, update and delete SQL. Creation assigns the owner from the session, and strict schemas reject a client-supplied owner field. Other-user and nonexistent IDs both return 404, reducing record-existence disclosure.
+Authentication establishes who signed in; authorization decides which records that identity may access. server/src/app.js requires a session on birthday routes. server/src/routes.js applies its owner_id to list, upcoming, update and delete SQL. Creation assigns ownership from the session; strict schemas reject a client-supplied owner field. Other-user and nonexistent IDs both return 404.
 
-Tests confirm anonymous CRUD is rejected with 401, Alice can perform legitimate CRUD, and Bob cannot list, modify or delete Alice's record. A temporary mutation removed the list owner predicate; the ordinary two-user test failed as expected. Figures 4 and 5 show independent browser accounts. Logout and idle/absolute expiry invalidate access.
+Tests confirm anonymous CRUD is rejected with 401, Alice can perform legitimate CRUD, and Bob cannot list, modify or delete Alice's record. A temporary mutation removed the list owner predicate; the ordinary two-user test failed as expected. Figure 3 shows the login gate; Figures 4 and 5 show independent browser accounts. Logout and idle/absolute expiry invalidate access.
 
 Residual: there is no MFA or self-service recovery. Disabling an account requires deleting its active sessions. A full application compromise can bypass application-level ownership because DB row-level security is not implemented.
 
 # F2: database trust and permissions
 
-Finding: the baseline application used a publicly documented disposable password and a role with superuser, database-creation and role-creation flags. PostgreSQL reported TLS off. Original Compose published a database port; the lab safety override restricted it to loopback. These observations establish weak configuration, not an external compromise.
+Finding: the original server/src/db.js defaulted PGUSER and PGPASSWORD to birthday, PGHOST to localhost, PGPORT to 5544 and PGDATABASE to thebirthdates. The same disposable credentials appeared in Compose, README and server/.env.example. The app role had superuser, database-creation and role-creation flags. PostgreSQL reported TLS off. Original Compose published a database port; the lab safety override restricted it to loopback. These observations establish weak configuration, not an external compromise.
 
 ## Secret separation and least privilege
 
-Setup generates unique 256-bit random secrets in an ignored local directory. Compose mounts them as files; source, environment examples and image layers contain no newly generated credentials. The runtime requires secret-file paths and has no hardcoded fallback. Historical public examples remain in Git history. The scoped history/working-file check found no exact matches for active passwords, session keys or private-key content; it is not a universal secret detector.
+Setup generates unique 256-bit random secrets in an ignored local directory. Compose mounts them as files; source, environment examples and image layers contain no newly generated credentials. The runtime requires secret-file paths and has no hardcoded fallback. Old public teaching defaults remain in history and unrelated upstream exercises; none is an active hardened credential. Gitleaks and exact active-secret checks covered the whole fork and reachable history with no matches. Appendix F records scope and limitations.
 
 The database administrator owns schema and migrations. birthday_app can read account hashes, manage birthdays/sessions and append audit events, with only needed sequence usage. It cannot create tables/roles, change users, or read/update/delete audit events. Six denied operations returned SQLSTATE 42501, while ordinary authorized API writes worked. The runtime does not create schema at startup.
 
 ## Encrypted and authenticated database transport
 
-The app loads the local CA and uses rejectUnauthorized=true with the postgres DNS name. The leaf certificate includes that DNS SAN. PostgreSQL rejects plaintext TCP and accepts the runtime role through TLS/SCRAM on the internal network. A valid connection reported TLSv1.3; connections without the trusted lab CA and with TLS disabled were rejected. Certificate verification is never globally disabled. PostgreSQL and node-postgres documentation explain the distinct roles of encryption, trust and configuration [4,6].
+The app loads the local CA and uses rejectUnauthorized=true with the postgres DNS name. The leaf certificate includes that DNS SAN. PostgreSQL rejects plaintext TCP and accepts the runtime role through TLS/SCRAM on the internal network. A valid connection reported TLSv1.3; connections without the trusted lab CA and with TLS disabled were rejected. Original db.js used rejectUnauthorized=false when PGSSL was enabled. An attacker controlling the connection path could impersonate the server with an untrusted certificate, intercepting database traffic despite encryption. CA and hostname validation now reject that impersonation. The insecure branch was source-confirmed; no interception attack was staged [4,5].
 
 The DB service has no host-published port. A certificate private key is copied from its read-only secret mount into an owner-only temporary directory because PostgreSQL enforces key permissions. The CA signing key stays on the host and is not a runtime secret.
 
 Residual and rotation: Compose secrets are file mounts, not a managed vault. Host/Docker administrators remain trusted, and Unix-socket administrative access is trusted inside the DB container. The runbook coordinates password changes with file replacement and app restart, invalidates sessions when rotating their key, and renews the 90-day DB certificate. Those procedures are specified; a full rotation drill was not performed.
+
+# F7: storage and recoverability
+
+The assignment allows at-rest protection to be implemented or concretely specified. This report uses both: backups are encrypted and tested; live volume/disk protection is specified and remains a release gate. PostgreSQL contact fields and its data volume are plaintext to a process that can access the storage. Password hashing and transport TLS do not change that fact.
+
+## Implemented backup protection
+
+A PostgreSQL custom-format dump is encrypted in memory using AES-256-GCM before an archive reaches disk. The archive has a fresh 12-byte nonce and authentication tag, and the 32-byte key is stored in the restricted secret directory. Sessions are excluded. Windows ACLs restrict secrets and backups to the invoking account, SYSTEM and administrators; this still trusts the host.
+
+The final recovery test authenticated/decrypted the archive, restored it into birthday_restore_check, and compared row counts plus ordered-content checksums for users, birthdays and audit events. It matched one synthetic birthday, two users and 221 accumulated test audit events, then removed the separate restore database. The live database was not overwritten. This validates a logical restore on the same host, not a full disaster-recovery exercise.
+
+## Concrete production storage specification
+
+Before storing real records, identify the host volume holding Docker Desktop's data VHDX. Require BitLocker XTS-AES-256 on that volume and any separate backup disk, with completed encryption/protection status captured using Get-BitLockerVolume. On Linux, use a managed LUKS2-encrypted data volume. Keep recovery keys in a separately controlled vault, test recovery after approval, and verify the actual DB disk rather than only the source folder.
+
+Use daily encrypted backups with proposed 30-day retention, a separate offline/immutable copy and weekly restore checks. Proposed RPO is 24 hours and RTO four hours, subject to a timed whole-host restoration drill. These are targets, not achieved service guarantees. Backup keys must move to separately managed custody; the lab's same-host key placement does not protect against full host compromise.
+
+Define when contact records and audit metadata expire, how deleted records age out of backups and who can restore them. A full restore must recreate restricted grants and an empty session table because the archive excludes ACLs and sessions. The small lab utility buffers at most 64 MiB and is not a production backup platform.
+
+Residual: host encryption status, off-host recovery, key-loss recovery and timed RTO remain unverified. A live administrator or compromised application can still access plaintext records even after disk encryption.
 
 # F3: input and browser defenses
 
@@ -185,9 +216,9 @@ Output handling | Store data as text; React text interpolation encodes it at ren
 Exact CORS allowlist | Only the two explicit local origins receive credentialed CORS; a disallowed Origin receives 403
 CSRF protection | Mutation requests need a session-bound unpredictable token; sign-in is protected and rotates the token/session
 CSP and framing | Helmet policy restricts scripts to same origin, blocks objects and sets frame-ancestors none
-Other response headers | nosniff blocks content-type guessing; no-store reduces private response caching; x-powered-by removed
+Other response headers | Appendix G explains every enabled security header, including legacy defaults and local-mode exceptions
 
-Tests rejected a number in a name field, forged owner_id, an impossible leap-day date, an 81-character name and invalid contact values. A valid birthday continued to save. A missing, forged or non-ASCII CSRF token received 403 rather than an internal comparison error. Allowed-origin reads succeeded; untrusted-origin reads failed.
+The exact original array-valued name plus ownerId payload now returns 400. Separate number, owner_id, impossible-date, long-name and invalid-contact probes also fail. A valid birthday continued to save. A missing, forged or non-ASCII CSRF token received 403 rather than an internal comparison error. Allowed-origin reads succeeded; untrusted-origin reads failed.
 
 The browser test stored a small img/onerror string as a synthetic name. The UI rendered the characters literally, created no img element with an event handler and did not set the test marker. Figure 6 documents this negative result. SQL values remain parameterized; the literal injection-search probe returned no rows before and after. Neither test establishes that every possible injection is impossible.
 
@@ -213,7 +244,7 @@ Four controlled requests at a test threshold of three produced 429 for reads, wr
 
 ## Errors and operational visibility
 
-Client responses are generic: malformed/oversized requests use 400/413, internal failures use 500 with a request ID, and a failed DB health check uses 503 unavailable. Server logs retain a request ID, error code/type and stack frames without request bodies, SQL detail fields, passwords or cookies. An injected audit failure returned a generic error and rolled back its data change.
+Client responses are generic: malformed/oversized requests use 400/413, internal failures use 500 with a request ID, and a real stopped-DB health check returned only 503 unavailable. After restart it returned 200 without restarting the app. Server logs retain a request ID, error code/type and stack frames without request bodies, SQL detail fields, passwords or cookies. An injected audit failure returned a generic error and rolled back its data change.
 
 Residual: limiters are per-process memory stores and reset on restart. Shared IPs can affect legitimate users, while distributed callers can evade a per-IP budget. Limits, timeouts and container caps reduce cost; no sustained-load resilience claim is made. Future multi-instance deployment needs a shared limiter and capacity testing.
 
@@ -258,31 +289,11 @@ Table 3. Trivy advisory-record counts. The app rows compare two implementation b
 
 The 46 PostgreSQL records were in the unused gosu privilege-switching helper and its embedded dependencies. The hardened image always starts as postgres, so the helper was removed. The initial application image had nine records inside bundled npm. npm is required during build but not to execute node in production, so it was removed from the final stage. No individual advisory was exploited or demonstrated reachable through the API.
 
-The app image separates the client build, production dependency installation and final runtime. Base images are pinned by SHA-256 digest. Secret directories, environment files, Git metadata and evidence are excluded from build context. It runs as UID 1000; PostgreSQL runs as UID 70. Runtime inspection confirmed read-only roots, dropped capabilities, no-new-privileges, bounded CPU/memory/PIDs and healthy containers. A write to /app failed with EROFS. Docker documents how multi-stage builds keep build artifacts out of final stages [7].
+The app image separates the client build, production dependency installation and final runtime. Base images are pinned by SHA-256 digest. Secret directories, environment files, Git metadata and evidence are excluded from build context. It runs as UID 1000; PostgreSQL runs as UID 70. Runtime inspection confirmed read-only roots, dropped capabilities, no-new-privileges, bounded CPU/memory/PIDs and healthy containers. A write to /app failed with EROFS. Docker documents how multi-stage builds keep build artifacts out of final stages [6].
 
 The final CycloneDX SBOM contains 144 component entries. It supports identifying affected software when a new advisory appears, deciding which image to rebuild and communicating dependency exposure to a reviewer. It is an inventory rather than a security certificate. Original and final root/client/server npm audits each reported zero advisories, despite the original authorization failure.
 
 Limitations: Trivy warned that Alpine 3.24 was missing from its EOL list. Zero matches do not prove comprehensive coverage. Deleted utilities remain in lower base-image layers, although absent from the merged runtime. Digest pinning requires deliberate security updates.
-
-# F7: storage and recoverability
-
-The assignment allows at-rest protection to be implemented or concretely specified. This report uses both: backups are encrypted and tested; live volume/disk protection is specified and remains a release gate. PostgreSQL contact fields and its data volume are plaintext to a process that can access the storage. Password hashing and transport TLS do not change that fact.
-
-## Implemented backup protection
-
-A PostgreSQL custom-format dump is encrypted in memory using AES-256-GCM before an archive reaches disk. The archive has a fresh 12-byte nonce and authentication tag, and the 32-byte key is stored in the restricted secret directory. Sessions are excluded. Windows ACLs restrict secrets and backups to the invoking account, SYSTEM and administrators; this still trusts the host.
-
-The final recovery test authenticated/decrypted the archive, restored it into birthday_restore_check, and compared row counts plus ordered-content checksums for users, birthdays and audit events. It matched one synthetic birthday, two users and 161 accumulated test audit events, then removed the separate restore database. The live database was not overwritten. This validates a logical restore on the same host, not a full disaster-recovery exercise.
-
-## Concrete production storage specification
-
-Before storing real records, identify the host volume holding Docker Desktop's data VHDX. Require BitLocker XTS-AES-256 on that volume and any separate backup disk, with completed encryption/protection status captured using Get-BitLockerVolume. On Linux, use a managed LUKS2-encrypted data volume. Keep recovery keys in a separately controlled vault, test recovery after approval, and verify the actual DB disk rather than only the source folder.
-
-Use daily encrypted backups with proposed 30-day retention, a separate offline/immutable copy and weekly restore checks. Proposed RPO is 24 hours and RTO four hours, subject to a timed whole-host restoration drill. These are targets, not achieved service guarantees. Backup keys must move to separately managed custody; the lab's same-host key placement does not protect against full host compromise.
-
-Define when contact records and audit metadata expire, how deleted records age out of backups and who can restore them. A full restore must recreate restricted grants and an empty session table because the archive excludes ACLs and sessions. The small lab utility buffers at most 64 MiB and is not a production backup platform.
-
-Residual: host encryption status, off-host recovery, key-loss recovery and timed RTO remain unverified. A live administrator or compromised application can still access plaintext records even after disk encryption.
 
 # Verification and negative results
 
@@ -304,7 +315,7 @@ The SQL injection probe returned no rows in both versions, consistent with param
 
 Browser verification found that the visual background covered the newly placed sign-out button. The UI layout was corrected and the real click test rerun. A Windows PowerShell compatibility problem in ACL setup was also corrected; the final backup creation/restore test passed. These observations are implementation feedback rather than findings against the original application.
 
-The after evidence includes redacted request/response transcripts, named assertions, screenshots with UTC capture metadata, runtime inspection and raw scanner JSON. Appendix C shows selected raw excerpts. It does not include active credentials or claim that a full eight hours elapsed for the injected-clock test. No independent ASVS certification or comprehensive penetration test is claimed.
+The after evidence includes redacted request/response transcripts, named assertions, screenshots with UTC capture metadata, runtime inspection and raw scanner JSON. Appendix C shows extracts; Appendix H prints the full recorded HTTP transcripts. Its embedded archive contains the complete raw tool files and original screenshots. It does not include active credentials or claim that a full eight hours elapsed for the injected-clock test. No independent ASVS certification or comprehensive penetration test is claimed.
 
 # Conditional legal and regulatory analysis
 
@@ -312,13 +323,13 @@ This local exercise used fictional information. No actual breach, affected perso
 
 Framework | Condition and assessment
 --- | ---
-GDPR | Article 3 concerns EU establishment or specified offering/monitoring of people in the Union. If applicable, assess Article 32 security and Articles 33/34 risk-based notice duties; the 72-hour supervisory notice rule has an exception and qualifiers. None of the jurisdictional facts is established here. [8]
-Utah UCPA | The current cited statute requires Utah business/targeting, at least $25m revenue and specified volume/sale thresholds; it includes higher-education and personal/household exemptions. A student exercise at a Utah university does not establish applicability. [9]
-California CCPA/CPRA | Covered-business status depends on California activity, applicable thresholds and other conditions. Names/contact data alone do not establish that status. Review current thresholds and data-sharing practices before launch. [10]
-HIPAA | Applies to covered entities/business associates and protected health information in the relevant context. A birthday/contact list is not automatically a HIPAA system; no covered relationship or health-care context is shown. [11]
-PCI DSS | Relevant to cardholder/sensitive authentication data or systems that could affect the cardholder environment. No payment flow or such relationship was identified in this project. It is a payment-security standard, not a universal privacy statute. [12]
+GDPR | Article 3 concerns EU establishment or specified offering/monitoring of people in the Union. If applicable, assess Article 32 security and Articles 33/34 risk-based notice duties; the 72-hour supervisory notice rule has an exception and qualifiers. None of the jurisdictional facts is established here. [7]
+Utah UCPA | The current cited statute requires Utah business/targeting, at least $25m revenue and specified volume/sale thresholds; it includes higher-education and personal/household exemptions. A student exercise at a Utah university does not establish applicability. [8]
+California CCPA/CPRA | Covered-business status depends on California activity, applicable thresholds and other conditions. Names/contact data alone do not establish that status. Review current thresholds and data-sharing practices before launch. [9]
+HIPAA | Applies to covered entities/business associates and protected health information in the relevant context. A birthday/contact list is not automatically a HIPAA system; no covered relationship or health-care context is shown. [10]
+PCI DSS | Relevant to cardholder/sensitive authentication data or systems that could affect the cardholder environment. No payment flow or such relationship was identified in this project. It is a payment-security standard, not a universal privacy statute. [11]
 
-For a real incident, determine whose information was involved, residence/jurisdiction, exact data elements, access/exfiltration evidence, encryption/key compromise and contractual duties. Preserve logs, contain exposure, involve the responsible privacy/legal owner and assess applicable state breach-notification laws. FTC guidance supports an organized response rather than a blanket notification claim [13].
+For a real incident, determine whose information was involved, residence/jurisdiction, exact data elements, access/exfiltration evidence, encryption/key compromise and contractual duties. Preserve logs, contain exposure, involve the responsible privacy/legal owner and assess applicable state breach-notification laws. FTC guidance supports an organized response rather than a blanket notification claim [12].
 
 Security engineering is still appropriate where a particular statute does not apply. Private lists, minimized collection, usable deletion, limited retention and protected recovery copies reduce foreseeable harm. The operator must make actual privacy and retention decisions before accepting real contacts.
 
@@ -330,11 +341,11 @@ Stage / owner | Action and acceptance evidence | Effort
 --- | --- | ---
 Completed / developer | Login, owner filters, strict validation, CSRF/CORS, bounded queries, transactional audit; 23-group suite plus browser and mutation checks | Implemented
 Completed / operator | Verified DB TLS, limited role, local secrets, isolated DB, hardened images, encrypted logical restore | Implemented
-Before real data / platform owner | Trusted browser HTTPS, Secure-cookie and health-check tests; verify encryption of Docker/backup storage and separate recovery-key custody | 1-2 days
+This week / before real data | Trusted browser HTTPS, Secure-cookie and health-check tests; verify encryption of Docker/backup storage and separate recovery-key custody | 1-2 days
 Before public release / app owner | Account enrollment/disable/reset procedure; MFA/identity-provider decision; central audit sink, alert ownership and retention | 2-4 days
 Before public release / independent reviewer | Review authorization coverage and DB grants; repeat adversarial tests; close release-blocking findings | 1-2 days
 Within 30 days / operations | Off-host restore drill, measured RTO/RPO, retention policy, incident contacts and credential/certificate rotation drill | 1-2 days
-Before scaling / engineering | Shared rate-limit store, capacity tests, stronger CSP and optional RLS/database auditing; secret/dependency/image CI | 2-5 days
+Next quarter / before scaling | Shared rate-limit store, capacity tests, stronger CSP and optional RLS/database auditing; secret/dependency/image CI | 2-5 days
 
 Do not prioritize an optional CI badge above transport, storage and account operations. CI could gate new high/critical image findings and dependency/secret checks, but security attacks should remain inside the authorized local lab. All exceptions need an owner, an expiry date and a documented reason.
 
@@ -358,8 +369,6 @@ The accountable owner should require: trusted browser HTTPS and Secure-cookie pr
 
 The practical lesson is that a usable app with zero npm advisories can still expose its whole purpose through missing access control. Fixing identity and ownership first removes the most direct path to harm. The rest of the work makes that fix more defensible, observable and recoverable.
 
-This report is intended to be reviewed and understood by Bryan Gurr before submission. The Canvas track declaration and the oral defense remain student actions. The report does not claim that a declaration, upload or recorded defense has already been completed.
-
 # Appendix A: original and login views
 
 ![Figure 2. Original app, no login performed. Captured 2026-09-21 19:15:16 UTC; synthetic baseline data. See Section F1.](evidence/before/app-before.png)
@@ -374,15 +383,15 @@ This report is intended to be reviewed and understood by Bryan Gurr before submi
 
 # Appendix C: selected raw evidence
 
-Complete machine-readable outputs remain in security/evidence. These extracts are intentionally small; the source files carry the full timestamps, response headers and assertion names.
+These extracts introduce the evidence. Appendix H contains the complete recorded HTTP transcripts and an embedded archive of raw outputs, with timestamps, headers and assertion names. The same files are in security/evidence.
 
 Source | Recorded output
 --- | ---
 before/summary.json | unauthenticatedUpdate: 200; unauthenticatedDelete: 204; requestedLimit: 10; actualReturned: 125; corsAllowOrigin: *
-after/security-tests.json | passed: 23; total: 23; capturedAt: 2026-09-22T00:38:05.487Z
+after/security-tests.json | passed: 23; total: 23; capturedAt: 2026-09-22T01:31:24.149Z
 after/mutation-summary.json | childExitCode: 1; detected: true; failed test: Other user cannot list, change or delete owner record
 after/read-only-proof.json | writeDenied: true; code: EROFS
-after/backup-restore.json | matched: true; audit_events: 161 rows; birthdays: 1 rows; users: 2 rows
+after/backup-restore.json | matched: true; audit_events: 221 rows; birthdays: 1 rows; users: 2 rows
 
 ![Figure 6. Stored markup appears as literal name text. The browser test also asserts no img[onerror] element and no execution marker. This is a negative XSS test, not proof against every payload.](evidence/after/literal-text-test.png)
 
@@ -398,50 +407,130 @@ Official sources consulted September 21, 2026 local time. Inline numbers identif
 
 [4] PostgreSQL 16. Secure TCP/IP Connections with SSL.https://www.postgresql.org/docs/16/ssl-tcp.html
 
-[5] FIRST. CVSS v3.1 Specification Document.https://www.first.org/cvss/v3.1/specification-document
+[5] node-postgres. SSL connection configuration.https://node-postgres.com/features/ssl
 
-[6] node-postgres. SSL connection configuration.https://node-postgres.com/features/ssl
+[6] Docker. Multi-stage builds.https://docs.docker.com/build/building/multi-stage/
 
-[7] Docker. Multi-stage builds.https://docs.docker.com/build/building/multi-stage/
-
-OWASP ASVS categories informed coverage for authentication, sessions, authorization, communication and logging [14]. This project has not completed the entire ASVS Level 2 verification set. Source guidance does not replace the local tests.
+The chosen target is ASVS 5.0.0 Level 2: private contact records and reusable accounts justify more than a minimal first layer of protection [13]. Appendix F distinguishes that target from demonstrated coverage. Full Level 2 compliance has not been established.
 
 # Appendix D: legal sources and evidence
 
-[8] European Union. Regulation (EU) 2016/679, Articles 3, 32-34.https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng
+[7] European Union. Regulation (EU) 2016/679, Articles 3, 32-34.https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng
 
-[9] Utah Code 13-61-102. Applicability; version effective May 1, 2024, superseded January 1, 2027.https://le.utah.gov/xcode/Title13/Chapter61/C13-61-S102_2024050120240501.pdf
+[8] Utah Code 13-61-102. Applicability; version effective May 1, 2024, superseded January 1, 2027.https://le.utah.gov/xcode/Title13/Chapter61/C13-61-S102_2024050120240501.pdf
 
-[10] California Department of Justice. California Consumer Privacy Act.https://www.oag.ca.gov/privacy/ccpa
+[9] California Department of Justice. California Consumer Privacy Act.https://www.oag.ca.gov/privacy/ccpa
 
-[11] U.S. HHS. Covered Entities and Business Associates.https://www.hhs.gov/hipaa/for-professionals/covered-entities/index.html
+[10] U.S. HHS. Covered Entities and Business Associates.https://www.hhs.gov/hipaa/for-professionals/covered-entities/index.html
 
-[12] PCI Security Standards Council. PCI Data Security Standard.https://www.pcisecuritystandards.org/standards/pci-dss/
+[11] PCI Security Standards Council. PCI Data Security Standard.https://www.pcisecuritystandards.org/standards/pci-dss/
 
-[13] Federal Trade Commission. Data Breach Response: A Guide for Business.https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business
+[12] Federal Trade Commission. Data Breach Response: A Guide for Business.https://www.ftc.gov/business-guidance/resources/data-breach-response-guide-business
 
-[14] OWASP. ASVS 5.0.0, English verification chapters. Used as a coverage reference, not a certification.https://github.com/OWASP/ASVS/tree/v5.0.0/5.0/en
+[13] OWASP. ASVS 5.0.0, English verification chapters. Level 2 target; not a certification.https://github.com/OWASP/ASVS/tree/v5.0.0/5.0/en
 
 Primary assessment evidence: security/evidence/before contains original transcripts, screenshot, environment, DB posture and Trivy/npm outputs. security/evidence/after contains regression/browser outputs, runtime and audit proof, backup evidence, history check, final scans and app-sbom.cdx.json. security/verification.md maps each claim to those files. The final repository includes the PDF, source report text and operating/defense guides.
 
-# Appendix E: AI disclosure and defense plan
+# Appendix E: AI disclosure
 
 ## Assistance and validation
 
-OpenAI Codex assisted with reading the assignment, identifying risks, creating the threat model, writing and revising application/configuration/test code, operating the local lab, collecting evidence and drafting this report. The user selected Track B, private per-user lists, the report name and local browser testing, and authorized a clean Docker reinstall. The student should review and understand the submitted work; AI involvement is not hidden.
+OpenAI Codex assisted with reading the assignment, identifying risks, creating the threat model, writing and revising application/configuration/test code, operating the local lab, collecting evidence and drafting this report. AI-generated work was checked against observed results and source code before inclusion.
 
 Validation used real HTTP/database results, explicit assertions, unedited browser screenshots, an intentionally removed ownership predicate, raw image/dependency scans, Git history checks and a restored encrypted archive. Failed browser interaction and Windows ACL compatibility checks led to changes and reruns. The PDF was rendered for visual inspection. No fabricated screenshots, exploit outcomes, legal applicability, individual CVE exploitation or real-data breach is claimed.
 
-## Suggested 10-15 minute walkthrough
+# Appendix F: method and coverage
 
-Time | Demonstration / explanation
+Target: OWASP ASVS 5.0.0 Level 2. Private names, birthdates and contact details, together with reusable accounts, justify this target. It is a target for the eventual service, not an achieved compliance label. Full applicable Level 1 and Level 2 verification would be required to claim it [13]. Public browser transport, account lifecycle and other production controls remain open.
+
+WSTG v4.2 area followed [14] | Local procedure and evidence
 --- | ---
-0:00-2:00 | Explain the original anonymous exposure and its business effect; state local/synthetic scope
-2:00-5:00 | Show login, Alice record and Bob isolation; separate authentication middleware from owner SQL
-5:00-7:00 | Explain server-side sessions, 15-minute idle/eight-hour absolute expiry and logout
-7:00-9:00 | Show TLS/role denials, deletion audit and non-root/read-only container evidence
-9:00-11:00 | Run/read the regression suite and mutation result; explain scanner limitations
-11:00-13:00 | Show backup recovery proof, history/default distinction and largest residual risk
-13:00-15:00 | State conditional legal duties, no-ship gates and AI validation; allow questions
+Configuration/deployment | Inspect original Compose, image inventory, TLS and permissions; compare hardened runtime and scanner outputs (F2/F6)
+Authentication and session management | Anonymous requests, valid/invalid login, cookie flags, logout, session rotation and injected-clock expiry (F1)
+Authorization | Two-account read/update/delete probes; remove owner predicate in a temporary copy and confirm failure (F1)
+Input validation/client-side behavior | Replay malformed payload, injection search, untrusted Origin and stored markup; verify positive saves and output text (F3)
+Error handling/business logic | Repeat pagination request; bounded throttle test; actual stopped database; audit-failure rollback (F4/F5)
 
-The separate defense-guide.md contains prompts and code locations for rehearsal. The live Canvas directions mention both a Teams Homework-channel recording and a sign-up/scheduling checklist. Confirm the instructor's expectation if those conflict. The student must post their own chosen-track declaration, upload the report and complete their own defense; none is represented as already submitted.
+The baseline preceded remediation; the final review repeats relevant probes and records authorized success. Some controls have no HTTP equivalent: DB grants, TLS, container settings, audit durability and backups use SQL, process inspection or restore evidence. Absence of an original feature is established by source/configuration review, not by an invented failed attack. This is a scoped WSTG assessment, not exhaustive coverage.
+
+[14] OWASP WSTG v4.2.Web application security testing categories
+
+[13] ASVS level rationale.OWASP ASVS 5.0.0: verification levels
+
+# Appendix F: secret-sweep evidence
+
+Gitleaks 8.30.1 scanned every reachable ref in the whole fork (13 commits), then an export of all 752 nonignored working files. Both reports contained zero findings. A separate exact-value scan checked generated passwords, session/backup keys and private-key content across the whole fork: 663 unique historical blobs, with zero active-secret matches. These are dated observations before this documentation commit, not guarantees about future commits.
+
+The exported working tree excludes ignored local runtime secrets and dependency directories. Gitleaks used its built-in rules, no custom suppression and full redaction. It ran offline after the official image was downloaded, with history mounted read-only. Its image is pinned as ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f.
+
+The original birthday/birthday teaching default remains publicly visible in historical source and unrelated upstream lab examples. It is not a real generated credential and is never used by the hardened app. The current hardened db.js has no password fallback; setup creates random credentials in ignored files. There was no reason to rewrite the upstream teaching history. A future discovery of an actual exposed key requires revocation/rotation and coordinated history cleanup.
+
+General pattern scans can miss unusual formats, and Git patch scanning does not inspect pixels in screenshots or all binary content. The exact-value scan complements it, while original screenshots were visually checked for fictional data and absence of credentials. Neither scanner proves that every possible secret is absent. The final PDF embeds only the reviewed evidence directory, not local secret or backup files.
+
+Evidence file (after/) | Contents
+--- | ---
+gitleaks-history.json / gitleaks-working.json | Raw redacted findings arrays: [] in both
+gitleaks-summary.json | Version, image digest, scope, commands and scan counts
+secret-history-check.json | Exact active-secret result and identified old teaching defaults
+
+[16] Gitleaks official documentation.Git and directory scanning, redaction and official container usage
+
+# Appendix G: browser response headers
+
+F3 enables Helmet defaults with explicit local-mode overrides. The actual values below are recorded in after/http-transcripts.json; the original transcript allows direct comparison. Explanations follow the official Helmet reference [15].
+
+Enabled header / value | Purpose and limit
+--- | ---
+Content-Security-Policy | Restricts executable/content sources; blocks objects, inline script and framing. Inline styles remain allowed.
+Cross-Origin-Opener-Policy: same-origin | Separates cross-origin browsing contexts, limiting opener-based interactions.
+Cross-Origin-Resource-Policy: same-origin | Restricts other origins from loading resources in no-CORS mode.
+Origin-Agent-Cluster: ?1 | Requests origin-based isolation; browser support determines enforcement.
+Referrer-Policy: no-referrer | Suppresses outgoing referrer information.
+X-Content-Type-Options: nosniff | Prevents MIME guessing for scripts and styles.
+X-DNS-Prefetch-Control: off | Avoids speculative DNS disclosure.
+X-Download-Options: noopen | Legacy Internet Explorer protection against opening downloads in site context.
+X-Frame-Options: SAMEORIGIN | Legacy clickjacking defense; modern CSP frame-ancestors none is stricter.
+X-Permitted-Cross-Domain-Policies: none | Denies cross-domain policy files to legacy clients.
+X-XSS-Protection: 0 | Disables obsolete browser filters that can introduce weaknesses.
+
+HSTS is intentionally absent in the loopback HTTP lab. The production option enables it and Secure cookies, but this path has not been verified. X-Powered-By is removed to reduce framework disclosure.
+
+[15] Helmet header reference.https://helmet.js.org/
+
+# Appendix G: API headers and pairing
+
+API response field | Security meaning
+--- | ---
+Cache-Control: no-store | Instructs caches not to retain private responses.
+Access-Control-Allow-Origin / Credentials | Exact approved origin plus true permits authenticated browser use; a disallowed Origin receives 403.
+Allow-Methods / Allow-Headers; Vary: Origin | Preflight restricts methods/request headers; origin-sensitive caching varies the response.
+Set-Cookie flags | HttpOnly blocks script reads; SameSite=Strict limits cross-site sending. Secure is off only for local HTTP.
+RateLimit / RateLimit-Policy / Retry-After | Communicate the enforced request budget and retry delay; headers alone do not enforce it.
+X-Request-ID | Correlates a public error with a server log; it grants no authority.
+
+Date, Content-Type, Content-Length, ETag and connection fields carry ordinary protocol metadata; no separate security protection is claimed for them.
+
+## Directly paired requests
+
+BASE-07 now replays the identical JSON with firstName=["ArrayValue"] and ownerId="ignored-owner": original 201, revised authenticated 400. BASE-05 uses the identical Origin https://untrusted.example.test and /api/birthdays?limit=1: original 200 with *, revised 403. BASE-02 repeats limit=10&amp;page=1: original 125 records, revised ten. BASE-09 repeats days=366&amp;limit=10: original 125, revised ten.
+
+The health comparison now stops the real database in each version: the original 503 exposes an internal address; the revised 503 contains only status=unavailable. Recovery returns 200. Authorized owner creation/update/deletion still returns 201/200/204. Identity probes necessarily use the target IDs of each version because the schema changed from UUIDs to integers; this is equivalent record targeting, not an identical byte-level URL.
+
+Full transcripts retain timestamps, request bodies, statuses and recorded response headers. Active passwords, cookies and CSRF values are omitted/redacted. Clock and rate-threshold injections remain labeled; no real eight-hour wait or sustained denial-of-service test is implied.
+
+# Appendix H: complete evidence package
+
+The following pages print the full recorded original and revised HTTP transcripts, including setup requests and raw responses. Long lines wrap without altering their content. Authentication material was intentionally redacted when captured. These are complete records from the test harnesses, not packet captures of every network header.
+
+The PDF also contains Candlelight-raw-evidence.zip as an embedded attachment. Use a PDF reader with an Attachments panel to save it. It contains the entire reviewed security/evidence directory: full scanner JSON, dependency audits, SBOM, HTTP records, test outputs, original screenshots and capture metadata. The repository provides the same files for viewers that do not expose PDF attachments.
+
+Archive path | Raw evidence
+--- | ---
+before/ | Original HTTP capture and outage, DB posture/processes, original UI, environment and scans
+after/ | Regression and mutation outputs, browser screenshots, real outage/recovery, runtime/audit proof, backup verification, secret scans, image/dependency scans and SBOM
+
+Raw scanner outputs are embedded to retain every advisory field without turning machine-oriented JSON into additional narrative findings. Only the recorded original PostgreSQL image has a true original/hardened scan pair; the two app scans compare implementation builds. No unused utility advisory is presented as a proven application exploit.
+
+Evidence paths in the printed transcripts identify the original JSON source. Compact JSON preserves all recorded fields and values; indentation is changed for layout. Evidence timestamps identify separate runs. The body of this report explains the limits of each comparison.
+
+The PDF prints all recorded HTTP transcripts on pages 30 onward. Exact JSON sources are in evidence/before/http-transcripts.json and evidence/after/http-transcripts.json, with each outage capture in the same directories.

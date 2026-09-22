@@ -11,7 +11,10 @@ Captured September 21, 2026 Mountain time; final timestamps extend into Septembe
 - `postgres-trivy.json`, `app-initial-build-trivy.json`, `app-trivy.json`: full scan outputs. Original PostgreSQL comparison is in `../before/postgres-trivy.json`. The application initial-build scan predates removal of unused npm; there was no original application-container baseline. Final app scan matches the final runtime image.
 - `app-sbom.cdx.json`: 144 CycloneDX component entries, including OS/runtime inventory. SBOM generation is separate from vulnerability scanning.
 - `root-npm-audit.json`, `client-npm-audit.json`, `server-npm-audit.json`: final lockfile audits with zero reported advisories.
-- `secret-history-check.json`: exact generated-password/key checks over nonignored project files and unique blobs in scoped reachable history. Historical disposable defaults are listed; history is not claimed to be sanitized.
+- `secret-history-check.json`: exact generated-password/key checks over nonignored whole-fork files and unique blobs across all reachable history. Historical disposable defaults are listed; history is not claimed to be sanitized.
 - `interrupted-test-cleanup.txt`: explicit removal of synthetic fixture leftovers from an interrupted run. Direct fixture cleanup is not an audited application action.
 
 See `../../verification.md` for paired before/after cases and limitations. Vulnerability counts are scanner records, not independently demonstrated reachable exploits. The Trivy Alpine EOL-list warning is disclosed. No real personal data or active session material belongs in this directory.
+
+- `health-db-offline.json`: real database stop, generic 503 and 200 recovery without app restart.
+- `gitleaks-history.json`, `gitleaks-working.json`, `gitleaks-summary.json`: general whole-fork/history scans, zero matches, pinned tool identity, scope and limitations.

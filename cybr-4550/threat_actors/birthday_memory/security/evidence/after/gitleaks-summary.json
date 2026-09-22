@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-09-22T01:37:16.566522+00:00",
+  "tool": "Gitleaks 8.30.1",
+  "image": "ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f",
+  "history": {
+    "command": "gitleaks git /repo --log-opts=--all --redact=100 --no-banner --report-format json --report-path /out/history.json",
+    "commits": 13,
+    "bytesScanned": 3053218,
+    "findings": 0,
+    "scope": "Entire fork, every reachable ref"
+  },
+  "working": {
+    "command": "gitleaks dir /scan/working --redact=100 --no-banner --report-format json --report-path /scan/working.json",
+    "exportedFiles": 752,
+    "bytesScanned": 6500493,
+    "findings": 0,
+    "scope": "Entire fork: git ls-files --cached --others --exclude-standard; copied to an isolated directory"
+  },
+  "configuration": "Built-in rules, no custom suppressions, full redaction; container network disabled",
+  "limitations": "Dated pre-documentation-commit snapshot. General pattern detection is not exhaustive. Ignored local runtime secrets excluded. Binary screenshot content visually reviewed separately."
+}

@@ -93,6 +93,11 @@ try {
     assert.equal(list.data.items[0].id,target);
   });
   await check('Wrong type, forged owner, impossible date and long fields are rejected', async () => {
+    // Exact BASE-07 payload from the preserved original capture.
+    assert.equal((await alice.call('POST','/api/birthdays',{
+      firstName:['ArrayValue'],lastName:'Testperson',birthdate:'1995-09-22',
+      phone:'+1 202 555 0101',email:'fictional126@example.test',ownerId:'ignored-owner'
+    })).status,400);
     for (const body of [{...fixture, firstName:42},{...fixture,owner_id:2},{...fixture,birthdate:'2001-02-29'},
       {...fixture,firstName:'x'.repeat(81)},{...fixture,email:'javascript:alert(1)'},{...fixture,phone:'<script>'}])
       assert.equal((await alice.call('POST','/api/birthdays',body)).status,400);
@@ -105,7 +110,7 @@ try {
       assert.equal((await alice.call('POST','/api/birthdays',fixture,{'X-CSRF-Token':token})).status,403);
   });
   await check('Untrusted origin denied; exact allowed origin permits credentialed CORS', async () => {
-    assert.equal((await alice.call('GET','/api/birthdays',undefined,{Origin:'https://untrusted.example'})).status,403);
+    assert.equal((await alice.call('GET','/api/birthdays?limit=1',undefined,{Origin:'https://untrusted.example.test'})).status,403);
     const r = await alice.call('GET','/api/birthdays',undefined,{Origin:'http://127.0.0.1:4000'});
     assert.equal(r.status,200); assert.equal(r.headers.get('access-control-allow-origin'),'http://127.0.0.1:4000');
     assert.equal(r.headers.get('access-control-allow-credentials'),'true');
@@ -123,12 +128,12 @@ try {
   });
   await check('Pagination limits rows, rejects excessive limits and supports next page', async () => {
     for(let i=0;i<27;i++) { const r = await alice.call('POST','/api/birthdays',{...fixture,lastName:`Page test ${i}`}); assert.equal(r.status,201); created.push(r.data.id); }
-    const first = await alice.call('GET','/api/birthdays?limit=10');
+    const first = await alice.call('GET','/api/birthdays?limit=10&page=1');
     const second = await alice.call('GET','/api/birthdays?limit=10&page=2');
     assert.equal(first.data.items.length,10); assert.equal(first.data.hasMore,true);
     assert.equal(second.data.items.length,10); assert.ok(!first.data.items.some(a => second.data.items.some(b=>b.id===a.id)));
     assert.equal((await alice.call('GET','/api/birthdays?limit=51')).status,400);
-    assert.equal((await alice.call('GET','/api/birthdays/upcoming?days=366&limit=5')).data.items.length,5);
+    assert.equal((await alice.call('GET','/api/birthdays/upcoming?days=366&limit=10')).data.items.length,10);
   });
   await check('Dedicated DB role cannot create table, escalate role, read or alter audit events', async () => {
     const rejected = [];

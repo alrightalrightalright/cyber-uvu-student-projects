@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-22T00:32:14.652Z",
+  "capturedAt": "2026-09-22T01:32:52.608Z",
   "mutation": "Removed ownership predicate from SELECT list in a temporary copy",
   "expectedTestFailure": true,
   "childExitCode": 1,

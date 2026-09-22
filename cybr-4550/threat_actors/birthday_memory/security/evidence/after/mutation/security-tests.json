@@ -1,5 +1,5 @@
 {
-  "capturedAt": "2026-09-22T00:32:14.614Z",
+  "capturedAt": "2026-09-22T01:32:52.586Z",
   "scope": "Local containers and synthetic users only. Separate app instances use the production code and real PostgreSQL; time and rate thresholds are injected where labeled.",
   "passed": 22,
   "total": 23,
@@ -7,22 +7,22 @@
     {
       "name": "Anonymous list, upcoming, create, update and delete are rejected",
       "passed": true,
-      "milliseconds": 119
+      "milliseconds": 88
     },
     {
       "name": "Correct password succeeds, session ID rotates, cookie is HttpOnly and SameSite Strict",
       "passed": true,
-      "milliseconds": 181
+      "milliseconds": 144
     },
     {
       "name": "Incorrect and unknown credentials share generic rejection",
       "passed": true,
-      "milliseconds": 70
+      "milliseconds": 55
     },
     {
       "name": "Owner can create a birthday",
       "passed": true,
-      "milliseconds": 13
+      "milliseconds": 12
     },
     {
       "name": "Other user cannot list, change or delete owner record",
@@ -32,47 +32,47 @@
     {
       "name": "Owner can update and read their record",
       "passed": true,
-      "milliseconds": 13
+      "milliseconds": 10
     },
     {
       "name": "Wrong type, forged owner, impossible date and long fields are rejected",
       "passed": true,
-      "milliseconds": 31
+      "milliseconds": 26
     },
     {
       "name": "Oversized body rejected before mutation",
       "passed": true,
-      "milliseconds": 5
+      "milliseconds": 3
     },
     {
       "name": "Missing, forged and Unicode CSRF tokens are rejected without server errors",
       "passed": true,
-      "milliseconds": 15
+      "milliseconds": 7
     },
     {
       "name": "Untrusted origin denied; exact allowed origin permits credentialed CORS",
       "passed": true,
-      "milliseconds": 38
+      "milliseconds": 5
     },
     {
       "name": "Security headers and private no-store responses are present",
       "passed": true,
-      "milliseconds": 6
+      "milliseconds": 3
     },
     {
       "name": "SQL injection search remains a literal value (negative result)",
       "passed": true,
-      "milliseconds": 6
+      "milliseconds": 3
     },
     {
       "name": "Pagination limits rows, rejects excessive limits and supports next page",
       "passed": true,
-      "milliseconds": 204
+      "milliseconds": 130
     },
     {
       "name": "Dedicated DB role cannot create table, escalate role, read or alter audit events",
       "passed": true,
-      "milliseconds": 84,
+      "milliseconds": 63,
       "evidence": {
         "role": {
           "current_user": "birthday_app",
@@ -111,7 +111,7 @@
     {
       "name": "Database connection uses TLS; wrong CA and plaintext connections are rejected",
       "passed": true,
-      "milliseconds": 22,
+      "milliseconds": 15,
       "evidence": {
         "ssl": true,
         "version": "TLSv1.3",
@@ -121,16 +121,16 @@
     {
       "name": "Owner deletion succeeds and subsequent update returns not found",
       "passed": true,
-      "milliseconds": 17,
+      "milliseconds": 10,
       "evidence": {
-        "deletedTarget": 90,
+        "deletedTarget": 179,
         "auditVerifiedSeparately": true
       }
     },
     {
       "name": "Audit failure rolls back the birthday mutation",
       "passed": true,
-      "milliseconds": 89
+      "milliseconds": 63
     },
     {
       "name": "Logout invalidates the server session",
@@ -140,27 +140,27 @@
     {
       "name": "Idle expiry rejects a previously valid session",
       "passed": true,
-      "milliseconds": 43
+      "milliseconds": 31
     },
     {
       "name": "Absolute expiry rejects a session despite repeated activity",
       "passed": true,
-      "milliseconds": 259
+      "milliseconds": 167
     },
     {
       "name": "Read and write throttles return 429 (four calls with test threshold three)",
       "passed": true,
-      "milliseconds": 118
+      "milliseconds": 75
     },
     {
       "name": "Sign-in throttle returns 429 (four calls with test threshold three)",
       "passed": true,
-      "milliseconds": 157
+      "milliseconds": 104
     },
     {
       "name": "Database outage health message contains no internal details",
       "passed": true,
-      "milliseconds": 36
+      "milliseconds": 26
     }
   ]
 }

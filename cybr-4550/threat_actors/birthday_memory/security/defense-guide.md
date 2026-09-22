@@ -26,7 +26,7 @@ Fifteen minutes without activity limits exposure from unattended machines; eight
 
 ## Is a removed password still in Git history?
 
-Yes: the upstream disposable default is still present in historical README/configuration content. Removing it from the current configuration does not erase that history. The hardened deployment generates unique active passwords and never uses that old default. `secret-history-check.json` records scoped reachable-history and working-file checks against the actual generated credentials/private-key content, without printing the secrets. This is an exact-match check, not proof that no imaginable secret exists. If a real credential had leaked, revocation would come before history cleanup.
+Yes: the upstream disposable default is still present in historical README/configuration content. Removing it from the current configuration does not erase that history. The hardened deployment generates unique active passwords and never uses that old default. `secret-history-check.json` records whole-fork reachable-history and working-file checks against the actual generated credentials/private-key content, without printing the secrets. Gitleaks also scanned all reachable refs and the nonignored working tree with no findings. The checks complement each other; neither proves that no imaginable secret exists. If a real credential had leaked, revocation would come before history cleanup.
 
 ## What does non-root prevent?
 
