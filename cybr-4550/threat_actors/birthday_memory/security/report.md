@@ -4,7 +4,7 @@ Birthday Memory: application security assessment and remediation
 
 Bryan GurrCYBR-4550 - M5: Exploring Bad CodeTrack B - Application Security
 
-September 21, 2026 (Mountain Daylight Time)Version 1.1Classification: PUBLIC - synthetic lab data only
+September 21, 2026 (Mountain Daylight Time)Version 1.2Classification: PUBLIC - synthetic lab data only
 
 Assessment boundary: my own fork, localhost/127.0.0.1 and locally owned Docker containers. No public vulnerable deployment or third-party testing.
 
@@ -59,9 +59,8 @@ Appendix F: secret-sweep evidence | 26
 Appendix G: browser response headers | 27
 Appendix G: API headers and pairing | 28
 Appendix H: complete evidence package | 29
-Appendix H: full HTTP transcripts | 30-142
 
-The main report occupies pages 1-18. Appendices begin on page 19 and are excluded from the assignment page limit. Full recorded transcripts appear at the end; raw tool files are also embedded in the PDF.
+The main report occupies pages 1-18. Appendices begin on page 19 and are excluded from the assignment page limit. Full transcripts and raw tool files are included in the embedded evidence archive described in Appendix H.
 
 # Scope, method and evidence boundaries
 
@@ -315,7 +314,7 @@ The SQL injection probe returned no rows in both versions, consistent with param
 
 Browser verification found that the visual background covered the newly placed sign-out button. The UI layout was corrected and the real click test rerun. A Windows PowerShell compatibility problem in ACL setup was also corrected; the final backup creation/restore test passed. These observations are implementation feedback rather than findings against the original application.
 
-The after evidence includes redacted request/response transcripts, named assertions, screenshots with UTC capture metadata, runtime inspection and raw scanner JSON. Appendix C shows extracts; Appendix H prints the full recorded HTTP transcripts. Its embedded archive contains the complete raw tool files and original screenshots. It does not include active credentials or claim that a full eight hours elapsed for the injected-clock test. No independent ASVS certification or comprehensive penetration test is claimed.
+The after evidence includes redacted request/response transcripts, named assertions, screenshots with UTC capture metadata, runtime inspection and raw scanner JSON. Appendix C shows extracts; Appendix H identifies the embedded archive containing full recorded HTTP transcripts, complete raw tool files and original screenshots. It does not include active credentials or claim that a full eight hours elapsed for the injected-clock test. No independent ASVS certification or comprehensive penetration test is claimed.
 
 # Conditional legal and regulatory analysis
 
@@ -520,9 +519,9 @@ Full transcripts retain timestamps, request bodies, statuses and recorded respon
 
 # Appendix H: complete evidence package
 
-The following pages print the full recorded original and revised HTTP transcripts, including setup requests and raw responses. Long lines wrap without altering their content. Authentication material was intentionally redacted when captured. These are complete records from the test harnesses, not packet captures of every network header.
+Complete original and revised HTTP transcripts are included in the embedded evidence archive. They retain setup requests, request bodies and recorded response headers. Authentication material was redacted when captured. These are test-harness records, not packet captures of every network header.
 
-The PDF also contains Candlelight-raw-evidence.zip as an embedded attachment. Use a PDF reader with an Attachments panel to save it. It contains the entire reviewed security/evidence directory: full scanner JSON, dependency audits, SBOM, HTTP records, test outputs, original screenshots and capture metadata. The repository provides the same files for viewers that do not expose PDF attachments.
+The PDF contains Candlelight-raw-evidence.zip as an embedded attachment. Use a PDF reader with an Attachments panel to save it. It contains the entire reviewed security/evidence directory: full scanner JSON, dependency audits, SBOM, HTTP records, test outputs, original screenshots and capture metadata. The repository provides the same files for viewers that do not expose PDF attachments.
 
 Archive path | Raw evidence
 --- | ---
@@ -531,6 +530,4 @@ after/ | Regression and mutation outputs, browser screenshots, real outage/recov
 
 Raw scanner outputs are embedded to retain every advisory field without turning machine-oriented JSON into additional narrative findings. Only the recorded original PostgreSQL image has a true original/hardened scan pair; the two app scans compare implementation builds. No unused utility advisory is presented as a proven application exploit.
 
-Evidence paths in the printed transcripts identify the original JSON source. Compact JSON preserves all recorded fields and values; indentation is changed for layout. Evidence timestamps identify separate runs. The body of this report explains the limits of each comparison.
-
-The PDF prints all recorded HTTP transcripts on pages 30 onward. Exact JSON sources are in evidence/before/http-transcripts.json and evidence/after/http-transcripts.json, with each outage capture in the same directories.
+The full transcripts are before/http-transcripts.json and after/http-transcripts.json. Each directory also contains health-db-offline.json for the outage comparison. Evidence timestamps identify separate runs. The body of this report explains each comparison and its limits.

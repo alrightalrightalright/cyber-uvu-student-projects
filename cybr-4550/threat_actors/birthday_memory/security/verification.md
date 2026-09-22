@@ -51,4 +51,4 @@ The revised suite reuses BASE-07's exact array-valued name and unknown ownerId b
 
 Gitleaks 8.30.1 scanned all 13 reachable commits and an export of 752 nonignored whole-fork files, using default rules and full redaction. Raw empty findings arrays and pinned-image metadata are in after/gitleaks-*.json. The independent exact-value scan covers the same whole-fork scope and unique historical blobs. Known original teaching defaults are not active credentials. Neither method is a universal guarantee; screenshots were reviewed separately.
 
-The PDF appendix prints the complete recorded before/after HTTP transcripts and embeds Candlelight-raw-evidence.zip with all raw tools, scans, SBOM and screenshots. Cookies/passwords/CSRF values remain redacted. Report-only preparation instructions remain in the separate defense guide.
+The PDF appendix provides selected evidence and embeds Candlelight-raw-evidence.zip containing the complete recorded before/after HTTP transcripts, raw tools, scans, SBOM and screenshots. Cookies/passwords/CSRF values remain redacted. Report-only preparation instructions remain in the separate defense guide.
