@@ -4,6 +4,8 @@ Prepared September 21, 2026. Track B, Application Security.
 
 **Status: design draft.** Source observations refer to upstream commit `849911eff1503f1aa25aa4a6fa3baa57b29ba41b`. Runtime tests and remediation verification are pending. This document does not assert that a planned control has been implemented.
 
+**Implementation addendum (September 21, 2026):** The original design below is preserved as evidence of planning before code changes (commit `c146613`). Implemented controls and actual verification are now indexed in `verification.md`. The lab uses HTTP only on loopback, verified TLS to PostgreSQL, encrypted backups, and a concrete but unverified disk-encryption specification. This is not an ASVS certification or a production-readiness claim.
+
 The application owner selected private lists: a user can read and manage only the birthday records they own. The original application has no concept of a user or record ownership. Adopting this policy therefore requires a schema change, API checks, and client behavior that respects the authenticated account.
 
 ## 1. Data flows and trust boundaries

@@ -1,366 +1,62 @@
-# 🎂 Birthday Memory
+# Birthday Memory: Operation Candlelight
 
-**Never miss a birthday again.** A modern, colorful web app to save, search, and celebrate the birthdays of everyone you care about. Add first name, last name, birthdate, phone and email once, and the app keeps them organized, searchable, and visible on a beautiful month-by-month calendar.
+**Bryan Gurr · CYBR-4550 · Track B: Application Security**
 
-Every birthday is stored permanently in a Postgres database. The calendar highlights upcoming celebrations with countdown timers, and the search bar finds anyone by name, email or phone in milliseconds.
+The original application let an anonymous caller read, change and delete birthday records. This branch adds login and private lists, then verifies the changes with actual database, HTTP and browser tests. It is a local security portfolio project using fictional data.
 
-## What it does
+## Start here
 
-- **Add birthdays** — a five-field form saves first name, last name, birthdate, telephone number, and email address to the `thebirthdates` Postgres database.
-- **Search instantly** — find anyone by typing their name, email, or phone number. Filter by birth month with colored pill buttons. Sort by soonest birthday, alphabetical order, or age.
-- **View a calendar** — each month displays as a 6-week grid. Days with birthdays show colorful avatar chips with the person's initials. Click a day to see full details. A sidebar counts down the next five celebrations.
-- **Deterministic color gradients** — each person gets a unique, stable color derived from their name, so they look identical across the card view, search results, and the calendar.
-- **Edit and delete** — update any field or remove entries from the search results with inline actions.
-- **Responsive design** — works on desktop, tablet, and mobile. The calendar compacts on narrow screens without losing functionality.
+- [Threat model prepared before implementation](security/threat-model.md)
+- [Verification map and limitations](security/verification.md)
+- [Report PDF](security/Operation-Candlelight-Bryan-Gurr.pdf)
+- [Security posture and reporting](SECURITY.md)
+- [Operating, backup and rotation procedures](security/operations.md)
+- [Oral defense preparation](security/defense-guide.md)
 
-## Stack
+## Run the secured lab
 
-| Layer    | Technology                         |
-| -------- | ---------------------------------- |
-| Frontend | React 18 + Vite, hand-written CSS  |
-| Backend  | Node.js + Express 4 + `pg`         |
-| Database | PostgreSQL 16 (Docker or local)   |
-| Package manager | npm                        |
+Requirements: Docker Desktop with Linux containers, Node.js 24, npm, Git and OpenSSL. Use this project's directory for all commands. The checked-in image digests and dependency lockfiles make the lab reproducible; scan results remain date-specific. The tested platform is Windows with Docker Desktop/WSL2, Linux amd64 containers and Microsoft Edge.
 
-## Prerequisites
-
-You need **two** things installed before you can run this app:
-
-1. **Node.js 18 or newer** — runs both the API and the build tooling. Ships with `npm`.
-2. **PostgreSQL 14 or newer** — stores the data. You can either install it natively or run the bundled Docker container (easiest).
-
-> **Every operating system installs these differently.** macOS, Windows and Linux each have their own package managers and conventions, so pick the section below that matches your machine. The commands differ, but once both tools are installed, the rest of the setup is identical everywhere.
-
-Check whether you already have them:
-
-```bash
-node --version    # want v18.0.0 or higher
-npm --version     # ships with Node
-docker --version  # only if you plan to use the bundled database
+```sh
+git clone --branch security-hardening-appsec https://github.com/alrightalrightalright/cyber-uvu-student-projects.git
+cd cyber-uvu-student-projects/cybr-4550/threat_actors/birthday_memory
+npm --prefix server ci --ignore-scripts
+node deployment/setup.mjs
+docker compose up --build -d
 ```
 
-If a command prints `command not found`, that tool is missing — install it below.
+On Windows with Git for Windows, set `$env:OPENSSL = 'C:\Program Files\Git\usr\bin\openssl.exe'` in PowerShell before setup if OpenSSL is not on PATH. Setup refuses to overwrite an existing `.secrets` directory. It generates unique random passwords, a session key, a backup key and a short-lived lab certificate. It restricts Windows secret-folder access to the invoking account, SYSTEM and administrators (Unix uses restrictive file modes).
 
-### Installing on macOS
+Open **http://127.0.0.1:4000**. Read your local `.secrets/demo-users.json` for Alice and Bob's generated login details. Never upload that file. The default Compose publishes only this loopback web port; PostgreSQL has no host port. Stop services with `docker compose down`; omit `-v` to preserve data. These commands initialize a new database; there is deliberately no automatic migration of the original unowned records.
 
-The usual route is [Homebrew](https://brew.sh). If you don't have it:
+The lab web connection is HTTP, so its cookie does not use `Secure`. PostgreSQL uses verified TLS. Production mode requires HTTPS key/certificate files and sets Secure cookies, but a production HTTPS deployment has not been validated here. Do not expose the provided local Compose configuration publicly.
 
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+## Verify
+
+```sh
+docker compose -f docker-compose.yml -f deployment/compose.test.yml run --rm tests
+docker compose -f docker-compose.yml -f deployment/compose.test.yml run --rm tests node /tests/mutation.mjs
+node security/secret-history-check.mjs
+node deployment/backup.mjs create
+node deployment/backup.mjs verify-restore
 ```
 
-Then:
+Tests use the real PostgreSQL database with synthetic users. They create and remove test birthdays, keep test audit records, and write redacted evidence to `security/evidence/after`. Stop normal use during a test/restore run. The mutation check intentionally removes one ownership filter only in a disposable source copy; success means the normal isolation test fails against that copy. It does not weaken the running app.
 
-```bash
-brew install node                      # Node.js + npm
-brew install --cask docker             # Docker Desktop (for the bundled database)
-```
+For browser checks, install Playwright outside the production dependency set and run `node security/browser-check.cjs`; set `PLAYWRIGHT_MODULE` to its module path if needed. The script uses installed Edge (`BROWSER_CHANNEL` can change that), saves four unedited screenshots and performs real login, UI creation, isolation, literal text rendering and logout. Use synthetic lab accounts only. `security/capture-runtime.ps1` captures container settings and verifies audit persistence and app recovery across a database restart.
 
-Launch Docker Desktop once from Applications so the background daemon starts — the `docker` CLI fails with a socket error until you do.
+## Design decisions
 
-On a fresh Mac, Homebrew may refuse to install anything until you accept the Xcode license:
+Server-side sessions fit a single browser application and support immediate logout without a token revocation system. Passwords use Argon2id; the runtime cannot create users or grant roles. A 15-minute idle timeout and eight-hour absolute limit constrain session exposure. All birthday queries enforce the session user's owner ID. Unknown records and other users' records share a 404 response.
 
-```bash
-sudo xcodebuild -license accept
-```
+Requests have an 8 KiB JSON cap. A list returns at most 50 records (25 by default), with explicit pages. The UI's search, calendar and totals describe the current page, which is labeled on screen. Per-IP controls allow 180 API requests, 120 reads, 60 writes and 10 login attempts per minute. These in-memory limits assume one app instance and reset on restart.
 
-Prefer a native database over Docker? `brew install postgresql@16 && brew services start postgresql@16`.
+Audit inserts and record changes share a transaction. The app can append audit events but cannot read, update or delete them. This protects against ordinary misuse of the runtime role; a compromised application can still bypass its own audit path, and a database/host administrator remains trusted.
 
-### Installing on Windows
+## Results and limits
 
-Use [winget](https://learn.microsoft.com/windows/package-manager/winget/) (built into Windows 11 and recent Windows 10):
+See the [verification map](security/verification.md) for actual results, timestamps and file paths. Trivy found no remaining advisories in the final flattened runtime images on the captured database snapshot; this does not prove absence of vulnerabilities. Upstream disposable defaults remain in Git history. New active secrets are generated locally and are excluded from source and builds.
 
-```powershell
-winget install OpenJS.NodeJS.LTS
-winget install Docker.DockerDesktop
-```
+The biggest release gaps are browser HTTPS deployment validation, verified encryption for the host disk containing Docker data, separate backup-key custody, operator-managed account lifecycle, central audit retention and independent security review. The report recommends the lab for demonstration and **no public production release** until those gates are satisfied.
 
-Or download the installers directly from [nodejs.org](https://nodejs.org) and [docker.com](https://www.docker.com/products/docker-desktop/).
-
-Things specific to Windows:
-
-- **Restart your terminal** after installing Node, or `node` won't be on your `PATH`.
-- Docker Desktop requires **WSL 2**. The installer normally sets this up; if it complains, run `wsl --install` in an admin PowerShell and reboot.
-- Use **PowerShell** or **Windows Terminal**, not the legacy `cmd.exe`. All the `npm` commands below work unchanged.
-- Running inside **WSL 2 (Ubuntu)** instead? Follow the Linux instructions below — that environment is Linux, not Windows.
-- Prefer a native database? Download the [PostgreSQL Windows installer](https://www.postgresql.org/download/windows/) and note the port and password you choose during setup.
-
-### Installing on Linux
-
-**Debian / Ubuntu:**
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-sudo apt-get install -y docker.io docker-compose-plugin
-```
-
-**Fedora / RHEL:**
-
-```bash
-sudo dnf install -y nodejs npm
-sudo dnf install -y docker docker-compose-plugin
-```
-
-**Arch:**
-
-```bash
-sudo pacman -S nodejs npm docker docker-compose
-```
-
-Things specific to Linux:
-
-- The version of Node in default `apt` repositories is often **too old**. Use NodeSource (shown above) or [nvm](https://github.com/nvm-sh/nvm) to get 18+.
-- Docker needs its daemon started and your user added to the `docker` group, otherwise every command needs `sudo`:
-  ```bash
-  sudo systemctl enable --now docker
-  sudo usermod -aG docker $USER   # then log out and back in
-  ```
-- Prefer a native database? `sudo apt-get install postgresql` (or your distro's equivalent), then create the database manually as shown in step 3 below.
-
-## Project dependencies
-
-These install automatically via `npm run install:all` — listed here so you know what the app pulls in.
-
-**Backend** (`server/package.json`):
-
-| Package   | Purpose                                              |
-| --------- | ---------------------------------------------------- |
-| `express` | HTTP server and routing                              |
-| `pg`      | PostgreSQL driver and connection pool                |
-| `cors`    | Allows the browser client to call the API            |
-| `dotenv`  | Loads database credentials from `server/.env`        |
-
-**Frontend** (`client/package.json`):
-
-| Package               | Purpose                                  |
-| --------------------- | ---------------------------------------- |
-| `react`, `react-dom`  | UI library                               |
-| `vite`                | Dev server and production bundler        |
-| `@vitejs/plugin-react`| React fast-refresh support for Vite      |
-
-**Root** (`package.json`):
-
-| Package        | Purpose                                         |
-| -------------- | ----------------------------------------------- |
-| `concurrently` | Runs the API and client together via `npm run dev` |
-
-There is no CSS framework — all styling is hand-written in `client/src/styles/index.css`.
-
-## Running the app
-
-These steps are the **same on macOS, Windows and Linux** once Node and Postgres are installed.
-
-### 1. Get the code and install dependencies
-
-```bash
-git clone <repository-url>
-cd birthday_memory
-npm run install:all
-```
-
-`install:all` installs the root, server, and client packages in one pass.
-
-### 2. Configure the database connection
-
-macOS / Linux:
-
-```bash
-cp server/.env.example server/.env
-```
-
-Windows PowerShell:
-
-```powershell
-Copy-Item server\.env.example server\.env
-```
-
-The defaults in that file already match the bundled Docker database, so you can leave it untouched if you use Docker. See [Configuration](#configuration) to point it elsewhere.
-
-### 3. Start PostgreSQL
-
-**Option A — bundled Docker database (recommended).** No Postgres install needed, and the `thebirthdates` database is created for you:
-
-```bash
-npm run db:up
-```
-
-Make sure Docker Desktop is actually running first, or you'll get a socket connection error.
-
-**Option B — your own PostgreSQL.** Create the database, then update `server/.env` with your host, port, user and password:
-
-```bash
-createdb thebirthdates
-# or:  psql -U postgres -c "CREATE DATABASE thebirthdates;"
-```
-
-The `birthdays` table and its indexes are created automatically when the API starts — you only need the empty database to exist.
-
-### 4. Add sample data (optional)
-
-```bash
-npm --prefix server run seed
-```
-
-Inserts eight well-known people, several with birthdays in the next few days so the countdown and calendar have something to show.
-
-### 5. Start the app
-
-```bash
-npm run dev
-```
-
-This runs the API on **http://localhost:4000** and the web client on **http://localhost:5173** at the same time.
-
-Open **http://localhost:5173** in your browser. Press `Ctrl+C` to stop both.
-
-## Troubleshooting
-
-**`command not found: node` / `'node' is not recognized`**
-Node isn't installed or isn't on your `PATH`. Reinstall it for your OS above and open a new terminal — `PATH` changes don't apply to already-open terminals.
-
-**`Cannot reach the server. Is the API running?`**
-The client loaded but the API didn't. Check the terminal running `npm run dev` for errors, and confirm http://localhost:4000/api/health responds.
-
-**`[db] could not initialize schema` / `ECONNREFUSED`**
-Postgres isn't reachable. If using Docker, run `docker compose ps` — the container should say `healthy`. If using your own instance, confirm the host, port, user and password in `server/.env` and that the `thebirthdates` database exists.
-
-**`failed to connect to the docker API`**
-The Docker daemon isn't running. Start Docker Desktop (macOS/Windows) or `sudo systemctl start docker` (Linux).
-
-**`Port 5173 is already in use` / `EADDRINUSE`**
-Something else has the port. Stop it, or change the client port in `client/vite.config.js` and the API port via `PORT` in `server/.env`.
-
-**`permission denied while trying to connect to the Docker daemon` (Linux)**
-Your user isn't in the `docker` group. Run `sudo usermod -aG docker $USER`, then log out and back in.
-
-## Configuration
-
-`server/.env` accepts either a single connection string or individual settings:
-
-```bash
-# Option A — connection string wins if present
-DATABASE_URL=postgresql://user:password@host:5432/thebirthdates
-
-# Option B — individual settings (defaults match docker-compose.yml)
-PGHOST=localhost
-PGPORT=5544
-PGUSER=birthday
-PGPASSWORD=birthday
-PGDATABASE=thebirthdates
-
-PGSSL=false   # set to "true" for managed Postgres that requires SSL
-PORT=4000
-```
-
-The database itself must exist; the `birthdays` table and its indexes are created automatically on server start.
-
-## Database schema
-
-Table `birthdays` in database `thebirthdates`:
-
-| Column       | Type          | Notes                        |
-| ------------ | ------------- | ---------------------------- |
-| `id`         | `uuid`        | primary key, auto-generated  |
-| `first_name` | `text`        | required                     |
-| `last_name`  | `text`        | required                     |
-| `birthdate`  | `date`        | required                     |
-| `phone`      | `text`        | optional                     |
-| `email`      | `text`        | optional                     |
-| `created_at` | `timestamptz` | defaults to `now()`          |
-| `updated_at` | `timestamptz` | refreshed on update          |
-
-## API
-
-| Method   | Path                            | Description                                |
-| -------- | ------------------------------- | ------------------------------------------ |
-| `GET`    | `/api/health`                   | Connectivity check                         |
-| `GET`    | `/api/birthdays?q=&month=`      | List, optionally filtered by text or month |
-| `GET`    | `/api/birthdays/upcoming?days=` | Soonest celebrations (default 30 days)     |
-| `POST`   | `/api/birthdays`                | Create                                     |
-| `PUT`    | `/api/birthdays/:id`            | Update                                     |
-| `DELETE` | `/api/birthdays/:id`            | Delete                                     |
-
-Responses use camelCase and include computed `age`, `turningAge`, `daysUntil` and `nextBirthday` fields. Validation failures return `422` with a per-field `errors` object.
-
-The API accepts requests from any HTTP client, so you can explore it with `curl`, Postman, Insomnia, or your browser:
-
-```bash
-curl http://localhost:4000/api/birthdays
-
-curl -X POST http://localhost:4000/api/birthdays \
-  -H 'Content-Type: application/json' \
-  -d '{"firstName":"Jane","lastName":"Doe","birthdate":"1995-03-22","phone":"+1 555 123 4567","email":"jane@example.com"}'
-```
-
-## Inspecting the database
-
-To browse the data with a GUI such as **DBeaver**, **TablePlus**, **pgAdmin** or **Postico**, use these settings (they match the bundled Docker database):
-
-| Setting  | Value            |
-| -------- | ---------------- |
-| Host     | `localhost`      |
-| Port     | `5544`           |
-| Database | `thebirthdates`  |
-| Username | `birthday`       |
-| Password | `birthday`       |
-
-Note the port is **5544**, not the default 5432 — chosen so it never collides with a PostgreSQL instance you already run. Most GUI tools pre-fill 5432, so remember to change it.
-
-To use the command line instead, the container already includes `psql`:
-
-```bash
-docker exec -it thebirthdates-db psql -U birthday -d thebirthdates
-```
-
-Once connected: `\dt` lists tables, `\d birthdays` shows the schema, `\q` quits.
-
-## Project structure
-
-```
-birthday_memory/
-├── client/                     # React front end
-│   ├── index.html
-│   ├── vite.config.js          # Dev server + /api proxy to the backend
-│   └── src/
-│       ├── App.jsx             # Layout, nav, hero stats
-│       ├── main.jsx            # React entry point
-│       ├── components/
-│       │   ├── AddSection.jsx      # Section 1 — add a birthday
-│       │   ├── SearchSection.jsx   # Section 2 — search, filter, edit, delete
-│       │   ├── CalendarSection.jsx # Section 3 — month grid + countdown
-│       │   ├── BirthdayForm.jsx    # Shared add/edit form
-│       │   ├── PersonCard.jsx      # Reusable person card
-│       │   └── Toast.jsx           # Notifications
-│       ├── hooks/useBirthdays.js   # Data fetching and cache
-│       ├── lib/api.js              # API client
-│       ├── lib/utils.js            # Dates, colors, calendar grid
-│       └── styles/index.css        # All styling
-├── server/                     # Express API
-│   ├── .env.example            # Copy to .env and edit
-│   └── src/
-│       ├── index.js            # Server entry point
-│       ├── db.js               # Connection pool + schema bootstrap
-│       ├── routes.js           # REST endpoints
-│       ├── validate.js         # Server-side validation
-│       ├── dates.js            # Age / next-birthday math
-│       └── seed.js             # Sample data
-├── docker-compose.yml          # Bundled PostgreSQL 16
-└── package.json                # Root scripts
-```
-
-## Scripts
-
-| Command                       | What it does                          |
-| ----------------------------- | ------------------------------------- |
-| `npm run dev`                 | Run API and client together           |
-| `npm run dev:server`          | API only, with watch mode             |
-| `npm run dev:client`          | Vite dev server only                  |
-| `npm run build`               | Production build of the client        |
-| `npm start`                   | Run the API without watch mode        |
-| `npm run db:up` / `db:down`   | Start / stop the bundled Postgres     |
-| `npm --prefix server run seed`| Insert sample birthdays               |
-
-## Deploying
-
-Build the client with `npm run build` and serve `client/dist` from any static host, pointing it at the API with `VITE_API_URL`. Run the API with `npm start` and a `DATABASE_URL` for your managed Postgres.
+Original project: [hvaandres/cyber-uvu-student-projects](https://github.com/hvaandres/cyber-uvu-student-projects), source commit `849911eff1503f1aa25aa4a6fa3baa57b29ba41b`. AI helped with implementation, testing and drafting; observed evidence, including failed checks and their fixes, is distinguished from specifications and unverified assumptions.

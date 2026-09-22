@@ -1,4 +1,5 @@
 const BASE = import.meta.env.VITE_API_URL ?? '';
+let csrfToken;
 
 /** Error carrying per-field validation messages from the API. */
 export class ApiError extends Error {
@@ -14,7 +15,8 @@ async function request(path, options = {}) {
   let response;
   try {
     response = await fetch(`${BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}) },
       ...options,
     });
   } catch {
@@ -26,6 +28,7 @@ async function request(path, options = {}) {
   const body = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401 && !path.endsWith('/login')) window.dispatchEvent(new Event('session-expired'));
     throw new ApiError(body?.error ?? 'The request failed.', {
       status: response.status,
       fieldErrors: body?.errors,
@@ -47,6 +50,14 @@ function query(params) {
 }
 
 export const api = {
+  me: async () => { const result = await request('/api/auth/me'); csrfToken = result.csrfToken; return result.user; },
+  login: async (username, password) => {
+    csrfToken = (await request('/api/auth/csrf')).csrfToken;
+    const result = await request('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+    csrfToken = result.csrfToken;
+    return result.user;
+  },
+  logout: async () => { await request('/api/auth/logout', { method: 'POST', body: '{}' }); csrfToken = undefined; },
   list: (params = {}) => request(`/api/birthdays${query(params)}`),
   upcoming: (days = 30) => request(`/api/birthdays/upcoming${query({ days })}`),
   create: (payload) =>

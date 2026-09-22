@@ -1,21 +1,84 @@
+name: candlelight-secure
 services:
   postgres:
-    image: postgres:16-alpine
-    container_name: thebirthdates-db
-    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: deployment/Postgres.Dockerfile
+    image: candlelight-postgres:hardened
     environment:
       POSTGRES_DB: thebirthdates
-      POSTGRES_USER: birthday
-      POSTGRES_PASSWORD: birthday
-    ports:
-      - "5544:5432"
+      POSTGRES_USER: birthday_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_admin_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets:
+      - db_admin_password
+      - db_tls_cert
+      - db_tls_key
+      - source: database_init
+        target: /docker-entrypoint-initdb.d/10-schema.sql
     volumes:
-      - thebirthdates-data:/var/lib/postgresql/data
+      - birthday-data:/var/lib/postgresql/data
+    networks: [database]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,uid=70,gid=70,mode=0700
+      - /var/run/postgresql:rw,noexec,nosuid,size=8m,uid=70,gid=70,mode=0700
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1.0
+    pids_limit: 100
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U birthday -d thebirthdates"]
+      test: [CMD-SHELL, "pg_isready -U birthday_admin -d thebirthdates"]
       interval: 5s
-      timeout: 5s
-      retries: 10
-
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    image: candlelight-app:hardened
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_MODE: local
+      HOST: 0.0.0.0
+      PORT: 4000
+      STATIC_DIR: /app/client/dist
+      CORS_ORIGINS: http://127.0.0.1:4000,http://localhost:4000
+      PGHOST: postgres
+      PGDATABASE: thebirthdates
+      PGUSER: birthday_app
+      PGPASSWORD_FILE: /run/secrets/db_app_password
+      PGSSLROOTCERT: /run/secrets/db_ca
+      SESSION_SECRET_FILE: /run/secrets/session_secret
+    secrets: [db_app_password, db_ca, session_secret]
+    ports: ["127.0.0.1:4000:4000"]
+    networks: [frontend, database]
+    read_only: true
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000,mode=0700"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 100
+networks:
+  frontend: {}
+  database:
+    internal: true
 volumes:
-  thebirthdates-data:
+  birthday-data: {}
+secrets:
+  db_admin_password:
+    file: .secrets/db-admin-password
+  db_app_password:
+    file: .secrets/db-app-password
+  session_secret:
+    file: .secrets/session-secret
+  db_ca:
+    file: .secrets/ca.crt
+  db_tls_cert:
+    file: .secrets/server.crt
+  db_tls_key:
+    file: .secrets/server.key
+  database_init:
+    file: .secrets/init.sql

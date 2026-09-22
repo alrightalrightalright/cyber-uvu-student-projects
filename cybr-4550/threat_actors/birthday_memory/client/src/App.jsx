@@ -5,6 +5,7 @@ import CalendarSection from './components/CalendarSection.jsx';
 import { Toast, useToast } from './components/Toast.jsx';
 import { useBirthdays } from './hooks/useBirthdays.js';
 import { fullName } from './lib/utils.js';
+import { api } from './lib/api.js';
 
 const NAV = [
   { id: 'add', label: 'Add', emoji: '✨' },
@@ -13,7 +14,43 @@ const NAV = [
 ];
 
 export default function App() {
-  const { birthdays, loading, error, refresh, create, update, remove } = useBirthdays();
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    const expired = () => { setUser(null); setError('Please sign in to continue.'); };
+    window.addEventListener('session-expired', expired);
+    api.me().then(setUser).catch(() => {}).finally(() => setChecking(false));
+    return () => window.removeEventListener('session-expired', expired);
+  }, []);
+  async function login(event) {
+    event.preventDefault(); setBusy(true); setError('');
+    const data = new FormData(event.currentTarget);
+    try { setUser(await api.login(data.get('username'), data.get('password'))); }
+    catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+  async function logout() {
+    try { await api.logout(); setUser(null); setError(''); }
+    catch (err) { setError(err.message); }
+  }
+  if (checking) return <main className="container"><p>Loading…</p></main>;
+  if (!user) return <main className="container"><section className="hero">
+    <p className="hero__kicker">Birthday Memory</p><h1>Sign in to your private list</h1>
+    <p>Your saved birthdays are visible only to your account.</p>
+    <form className="birthday-form" onSubmit={login}>
+      <label className="field">Username<input className="field__input" name="username" autoComplete="username" required maxLength={64} /></label>
+      <label className="field">Password<input className="field__input" name="password" type="password" autoComplete="current-password" required maxLength={128} /></label>
+      {error && <p role="alert">{error}</p>}
+      <button className="btn btn--primary" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
+    </form><p>Ask your administrator for an account.</p>
+  </section></main>;
+  return <Dashboard key={user.id} user={user} logout={logout} authError={error} />;
+}
+
+function Dashboard({ user, logout, authError }) {
+  const { birthdays, loading, error, refresh, create, update, remove, page, setPage, hasMore } = useBirthdays();
   const { toast, show, dismiss } = useToast();
   const [active, setActive] = useState('add');
 
@@ -63,6 +100,9 @@ export default function App() {
       </div>
 
       <header className="topbar">
+        <div><p>Signed in as {user.username} · Private list</p>
+          <button className="btn btn--ghost" onClick={logout}>Sign out</button>
+          {authError && <p role="alert">{authError}</p>}</div>
         <a className="brand" href="#add">
           <span className="brand__mark" aria-hidden="true">
             🎂
@@ -86,6 +126,9 @@ export default function App() {
       </header>
 
       <main className="container">
+        <div className="banner"><p>Page {page} · Search, calendar and totals show this page (up to 25 birthdays).</p>
+          <button className="btn btn--ghost" disabled={page === 1 || loading} onClick={() => setPage(page - 1)}>Previous page</button>
+          <button className="btn btn--ghost" disabled={!hasMore || loading} onClick={() => setPage(page + 1)}>Next page</button></div>
         <section className="hero">
           <p className="hero__kicker">Never miss a candle again</p>
           <h1 className="hero__title">
@@ -166,7 +209,7 @@ export default function App() {
 
       <footer className="footer">
         <p>
-          Data lives in the <code>thebirthdates</code> Postgres database.
+          Your birthdays belong to your private account.
         </p>
       </footer>
 

@@ -1,0 +1,26 @@
+# Explicit opt-in test runner; mounts synthetic credentials only for local tests.
+services:
+  tests:
+    image: candlelight-app:hardened
+    profiles: [test]
+    environment:
+      PGHOST: postgres
+      PGDATABASE: thebirthdates
+      PGUSER: birthday_app
+      PGPASSWORD_FILE: /run/secrets/db_app_password
+      PGSSLROOTCERT: /run/secrets/db_ca
+      SESSION_SECRET_FILE: /run/secrets/session_secret
+    secrets: [db_app_password, db_ca, session_secret]
+    volumes:
+      - ./server/tests:/tests:ro
+      - ./.secrets/demo-users.json:/test-users.json:ro
+      - ./security/evidence/after:/evidence
+    networks: [database, frontend]
+    read_only: true
+    tmpfs: ["/tmp:rw,nosuid,size=32m,uid=1000,gid=1000,mode=0700"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1.0
+    pids_limit: 100
+    command: [node, /tests/security.mjs]

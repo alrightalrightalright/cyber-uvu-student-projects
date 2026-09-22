@@ -1,150 +1,73 @@
 import { Router } from 'express';
-import { pool, mapRow } from './db.js';
-import { validateBirthday } from './validate.js';
+import { mapRow } from './db.js';
 import { decorate } from './dates.js';
+import { birthdayInput, listQuery, upcomingQuery } from './validate.js';
+export const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+const validId = (value) => /^[1-9]\d{0,9}$/.test(value) && Number(value) <= 2147483647;
 
-const router = Router();
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-const SELECT_COLUMNS = `
-  id, first_name, last_name, birthdate, phone, email, created_at, updated_at
-`;
-
-/** Wraps an async handler so rejected promises reach the error middleware. */
-const wrap = (handler) => (req, res, next) =>
-  Promise.resolve(handler(req, res, next)).catch(next);
-
-/** GET /api/birthdays?q=&month= — list, optionally filtered. */
-router.get(
-  '/',
-  wrap(async (req, res) => {
-    const q = String(req.query.q ?? '').trim();
-    const month = Number(req.query.month);
-
-    const conditions = [];
-    const params = [];
-
-    if (q) {
-      params.push(`%${q}%`);
-      const p = `$${params.length}`;
-      conditions.push(`(
-        first_name ILIKE ${p}
-        OR last_name ILIKE ${p}
-        OR (first_name || ' ' || last_name) ILIKE ${p}
-        OR coalesce(email, '') ILIKE ${p}
-        OR coalesce(phone, '') ILIKE ${p}
-      )`);
-    }
-
-    if (Number.isInteger(month) && month >= 1 && month <= 12) {
-      params.push(month);
-      conditions.push(`EXTRACT(MONTH FROM birthdate) = $${params.length}`);
-    }
-
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-    const { rows } = await pool.query(
-      `SELECT ${SELECT_COLUMNS}
-         FROM birthdays
-         ${where}
-        ORDER BY EXTRACT(MONTH FROM birthdate),
-                 EXTRACT(DAY FROM birthdate),
-                 lower(first_name)`,
-      params,
-    );
-
-    res.json(rows.map((row) => decorate(mapRow(row))));
-  }),
-);
-
-/** GET /api/birthdays/upcoming?days=30 — soonest celebrations first. */
-router.get(
-  '/upcoming',
-  wrap(async (req, res) => {
-    const days = Number(req.query.days);
-    const window = Number.isFinite(days) && days > 0 ? Math.min(days, 366) : 30;
-
-    const { rows } = await pool.query(`SELECT ${SELECT_COLUMNS} FROM birthdays`);
-
-    const upcoming = rows
-      .map((row) => decorate(mapRow(row)))
-      .filter((entry) => entry.daysUntil <= window)
-      .sort((a, b) => a.daysUntil - b.daysUntil || a.firstName.localeCompare(b.firstName));
-
-    res.json(upcoming);
-  }),
-);
-
-/** POST /api/birthdays — create a record. */
-router.post(
-  '/',
-  wrap(async (req, res) => {
-    const { errors, value } = validateBirthday(req.body);
-    if (errors) return res.status(422).json({ errors });
-
-    const { rows } = await pool.query(
-      `INSERT INTO birthdays (first_name, last_name, birthdate, phone, email)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING ${SELECT_COLUMNS}`,
-      [value.firstName, value.lastName, value.birthdate, value.phone, value.email],
-    );
-
-    res.status(201).json(decorate(mapRow(rows[0])));
-  }),
-);
-
-/** PUT /api/birthdays/:id — replace a record. */
-router.put(
-  '/:id',
-  wrap(async (req, res) => {
-    if (!UUID_RE.test(req.params.id)) {
-      return res.status(404).json({ error: 'Birthday not found.' });
-    }
-
-    const { errors, value } = validateBirthday(req.body);
-    if (errors) return res.status(422).json({ errors });
-
-    const { rows } = await pool.query(
-      `UPDATE birthdays
-          SET first_name = $1,
-              last_name  = $2,
-              birthdate  = $3,
-              phone      = $4,
-              email      = $5,
-              updated_at = now()
-        WHERE id = $6
-      RETURNING ${SELECT_COLUMNS}`,
-      [
-        value.firstName,
-        value.lastName,
-        value.birthdate,
-        value.phone,
-        value.email,
-        req.params.id,
-      ],
-    );
-
-    if (rows.length === 0) return res.status(404).json({ error: 'Birthday not found.' });
-    res.json(decorate(mapRow(rows[0])));
-  }),
-);
-
-/** DELETE /api/birthdays/:id */
-router.delete(
-  '/:id',
-  wrap(async (req, res) => {
-    if (!UUID_RE.test(req.params.id)) {
-      return res.status(404).json({ error: 'Birthday not found.' });
-    }
-
-    const { rowCount } = await pool.query('DELETE FROM birthdays WHERE id = $1', [
-      req.params.id,
-    ]);
-
-    if (rowCount === 0) return res.status(404).json({ error: 'Birthday not found.' });
-    res.status(204).end();
-  }),
-);
-
-export default router;
+export function birthdayRouter(pool, logger) {
+  const router = Router();
+  router.get('/', wrap(async (req, res) => {
+    const parsed = listQuery.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid query' });
+    const { page, limit, q, month } = parsed.data;
+    const search = q ? `%${q.replace(/[\\%_]/g, '\\$&')}%` : null;
+    const { rows } = await pool.query(`SELECT * FROM birthdays WHERE owner_id=$1
+      AND ($2::text IS NULL OR first_name || ' ' || last_name ILIKE $2)
+      AND ($3::int IS NULL OR EXTRACT(MONTH FROM birthdate)=$3)
+      ORDER BY id LIMIT $4 OFFSET $5`, [req.session.user.id, search, month ?? null, limit + 1, (page - 1) * limit]);
+    res.json({ items: rows.slice(0, limit).map(r => decorate(mapRow(r))), page, limit, hasMore: rows.length > limit });
+  }));
+  router.get('/upcoming', wrap(async (req, res) => {
+    const parsed = upcomingQuery.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid query' });
+    const { page, limit, days } = parsed.data;
+    // SQL computes occurrences before LIMIT; February 29 clamps to February's last day.
+    const { rows } = await pool.query(`WITH candidates AS (
+      SELECT b.*, y.year, make_date(y.year, EXTRACT(MONTH FROM birthdate)::int, 1) AS month_start
+      FROM birthdays b CROSS JOIN LATERAL generate_series(EXTRACT(YEAR FROM CURRENT_DATE)::int,
+        EXTRACT(YEAR FROM CURRENT_DATE)::int+1) AS y(year) WHERE owner_id=$1
+      ), occurrences AS (
+      SELECT *, month_start + (LEAST(EXTRACT(DAY FROM birthdate)::int,
+        EXTRACT(DAY FROM month_start + INTERVAL '1 month - 1 day')::int)-1) AS occurrence FROM candidates
+      ), next_dates AS (SELECT id, MIN(occurrence) AS next_date FROM occurrences
+        WHERE occurrence >= CURRENT_DATE GROUP BY id)
+      SELECT b.* FROM birthdays b JOIN next_dates n USING(id)
+      WHERE b.owner_id=$1 AND n.next_date <= CURRENT_DATE + $2::int
+      ORDER BY n.next_date, b.id LIMIT $3 OFFSET $4`, [req.session.user.id, days, limit + 1, (page - 1) * limit]);
+    res.json({ items: rows.slice(0, limit).map(r => decorate(mapRow(r))), page, limit, hasMore: rows.length > limit });
+  }));
+  async function mutate(req, res, action) {
+    if (action !== 'create' && !validId(req.params.id)) return res.status(404).json({ error: 'Not found' });
+    const parsed = action === 'delete' ? null : birthdayInput.safeParse(req.body);
+    if (parsed && !parsed.success) return res.status(400).json({ error: 'Invalid birthday' });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      let result;
+      const owner = req.session.user.id;
+      if (action === 'delete') result = await client.query('DELETE FROM birthdays WHERE id=$1 AND owner_id=$2 RETURNING *', [req.params.id, owner]);
+      else {
+        const b = parsed.data;
+        const values = [b.firstName, b.lastName, b.birthdate, b.phone, b.email, owner];
+        result = action === 'create'
+          ? await client.query(`INSERT INTO birthdays(first_name,last_name,birthdate,phone,email,owner_id)
+              VALUES($1,$2,$3,$4,$5,$6) RETURNING *`, values)
+          : await client.query(`UPDATE birthdays SET first_name=$1,last_name=$2,birthdate=$3,phone=$4,email=$5,updated_at=NOW()
+              WHERE owner_id=$6 AND id=$7 RETURNING *`, [...values, req.params.id]);
+      }
+      if (!result.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found' }); }
+      const target = result.rows[0].id;
+      await client.query('INSERT INTO audit_events(actor_id,action,target_id,request_id) VALUES($1,$2,$3,$4)',
+        [owner, action, target, req.id]);
+      await client.query('COMMIT');
+      logger.info({ event: 'birthday_mutation', actor: owner, action, target, requestId: req.id });
+      return action === 'delete' ? res.status(204).end() : res.status(action === 'create' ? 201 : 200).json(decorate(mapRow(result.rows[0])));
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+    finally { client.release(); }
+  }
+  router.post('/', wrap((req, res) => mutate(req, res, 'create')));
+  router.put('/:id', wrap((req, res) => mutate(req, res, 'update')));
+  router.delete('/:id', wrap((req, res) => mutate(req, res, 'delete')));
+  return router;
+}
