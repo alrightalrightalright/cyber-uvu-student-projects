@@ -25,7 +25,7 @@ for(const commit of commits) {
     const [meta,file]=row.split('\t'), sha=meta.split(' ')[2];
     if(seen.has(sha))continue; seen.add(sha);
     const buffer=git(['cat-file','blob',sha]); check(buffer,`${commit}:${file}`);
-    if(/(?:POSTGRES_PASSWORD:\s*birthday|PGPASSWORD=birthday)/.test(buffer.toString())) defaults.push({commit,file,kind:'historical disposable default'});
+    if(/^\s*(?:POSTGRES_PASSWORD:\s*birthday|PGPASSWORD=birthday)\s*$/m.test(buffer.toString())) defaults.push({commit,file,kind:'historical disposable default'});
   }
 }
 const report={checkedAt:new Date().toISOString(),scope,historyCommits:commits.length,uniqueBlobs:seen.size,
