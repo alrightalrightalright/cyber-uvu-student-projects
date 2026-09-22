@@ -4,7 +4,7 @@ Birthday Memory: application security assessment and remediation
 
 Bryan GurrCYBR-4550 - M5: Exploring Bad CodeTrack B - Application Security
 
-September 21, 2026 (Mountain Daylight Time)Version 1.2Classification: PUBLIC - synthetic lab data only
+September 21, 2026 (Mountain Daylight Time)Version 1.3Classification: PUBLIC - synthetic lab data only
 
 Assessment boundary: my own fork, localhost/127.0.0.1 and locally owned Docker containers. No public vulnerable deployment or third-party testing.
 
@@ -54,23 +54,23 @@ Appendix C: selected raw evidence | 21
 Appendix D: technical sources | 22
 Appendix D: legal sources and evidence | 23
 Appendix E: AI disclosure | 24
-Appendix F: method and coverage | 25
-Appendix F: secret-sweep evidence | 26
-Appendix G: browser response headers | 27
-Appendix G: API headers and pairing | 28
-Appendix H: complete evidence package | 29
+Appendix F: browser response headers | 25
+Appendix F: API headers and pairing | 26
+Appendix G: complete evidence package | 27
 
-The main report occupies pages 1-18. Appendices begin on page 19 and are excluded from the assignment page limit. Full transcripts and raw tool files are included in the embedded evidence archive described in Appendix H.
+The main report occupies pages 1-18. Appendices begin on page 19 and are excluded from the assignment page limit. Full transcripts and raw tool files are included in the embedded evidence archive described in Appendix G.
 
 # Scope, method and evidence boundaries
 
 ## Authorized scope
 
-Testing covered the local copy of the user-owned fork and its Birthday Memory React client, Express API and PostgreSQL database. Only synthetic names, reserved example.test addresses and fictional phone numbers were used. Unrelated coursework was excluded from application testing; the secret sweep covered the whole fork. The selected policy is explicit: every account manages only its own birthdays.
+Testing covered the owned local Birthday Memory client, API and database using fictional contact records. Unrelated coursework was excluded from application testing; the secret sweep covered the whole fork. Each account may manage only its own birthdays.
 
 ## Assessment framework and sequence
 
-The review follows the scoped OWASP WSTG v4.2 workflow: inspect the design and deployment, test authentication/authorization and sessions, probe input and errors, remediate, then repeat negative and authorized-use checks [14]. The coverage map in Appendix F links these areas to actual tests. It records the process followed; it is not a claim that every WSTG test was run.
+OWASP WSTG v4.2 guided configuration, authentication, authorization, session, input and error testing. Source/configuration review established the baseline, followed by local probes, remediation and repeated negative and authorized-use checks. This is scoped coverage, not every WSTG test [14].
+
+The target is ASVS 5.0.0 Level 2 because private contact records and reusable accounts justify protection beyond a minimal first layer. It is a target, not achieved compliance; the complete applicable Level 1 and Level 2 requirements have not been verified [13].
 
 The original code was preserved at 849911e. Baseline evidence was committed as ff54a7e. A data-flow diagram, STRIDE analysis, asset inventory and roadmap were committed at c146613 before API changes. Remediation then proceeded from authentication/ownership to database restrictions, browser and request controls, containers, recovery and regression testing.
 
@@ -83,7 +83,7 @@ Playwright with installed Microsoft Edge | Real browser workflows and original s
 Trivy 0.74.0; npm audit; CycloneDX | Date-specific image/dependency inventory and advisory checks
 Gitleaks 8.30.1; exact secret-content scan | Whole-fork working-file and history exposure checks
 
-The baseline API and database were constrained to loopback with an explicit safety harness/Compose override. The original network configuration was reviewed, but reachability from another computer was not tested. This matters: findings establish missing application controls, not internet exposure of this host.
+The baseline used a loopback-only harness/Compose override. Original network settings were reviewed; access from another computer was not tested. Findings establish missing controls, not internet exposure.
 
 Appendices contain recorded transcripts and embedded raw evidence. September 22 UTC captures are still September 21 locally. No sustained denial-of-service or individual image-CVE exploitation was attempted.
 
@@ -168,11 +168,11 @@ Residual: there is no MFA or self-service recovery. Disabling an account require
 
 # F2: database trust and permissions
 
-Finding: the original server/src/db.js defaulted PGUSER and PGPASSWORD to birthday, PGHOST to localhost, PGPORT to 5544 and PGDATABASE to thebirthdates. The same disposable credentials appeared in Compose, README and server/.env.example. The app role had superuser, database-creation and role-creation flags. PostgreSQL reported TLS off. Original Compose published a database port; the lab safety override restricted it to loopback. These observations establish weak configuration, not an external compromise.
+Finding: the original server/src/db.js defaulted PGUSER and PGPASSWORD to birthday, PGHOST to localhost, PGPORT to 5544 and PGDATABASE to thebirthdates. The same disposable credentials appeared in Compose, README and server/.env.example. The app role had superuser, database-creation and role-creation flags. TLS was off, and Compose published a DB port, restricted to loopback by the lab override. No external compromise was demonstrated.
 
 ## Secret separation and least privilege
 
-Setup generates unique 256-bit random secrets in an ignored local directory. Compose mounts them as files; source, environment examples and image layers contain no newly generated credentials. The runtime requires secret-file paths and has no hardcoded fallback. Old public teaching defaults remain in history and unrelated upstream exercises; none is an active hardened credential. Gitleaks and exact active-secret checks covered the whole fork and reachable history with no matches. Appendix F records scope and limitations.
+Setup generates random secrets in ignored local files, mounted by Compose. The runtime requires secret-file paths with no password fallback; secrets are excluded from source and images. Old public teaching defaults remain in history and unrelated exercises but are unused by this deployment. Gitleaks 8.30.1 and an exact-value check found no active-secret matches across the whole fork and reachable history. The after/gitleaks-*.json and secret-history-check.json evidence records scope, counts and limitations. Ignored local runtime secrets are excluded; screenshots were reviewed separately. Scans are not exhaustive [16].
 
 The database administrator owns schema and migrations. birthday_app can read account hashes, manage birthdays/sessions and append audit events, with only needed sequence usage. It cannot create tables/roles, change users, or read/update/delete audit events. Six denied operations returned SQLSTATE 42501, while ordinary authorized API writes worked. The runtime does not create schema at startup.
 
@@ -182,7 +182,7 @@ The app loads the local CA and uses rejectUnauthorized=true with the postgres DN
 
 The DB service has no host-published port. A certificate private key is copied from its read-only secret mount into an owner-only temporary directory because PostgreSQL enforces key permissions. The CA signing key stays on the host and is not a runtime secret.
 
-Residual and rotation: Compose secrets are file mounts, not a managed vault. Host/Docker administrators remain trusted, and Unix-socket administrative access is trusted inside the DB container. The runbook coordinates password changes with file replacement and app restart, invalidates sessions when rotating their key, and renews the 90-day DB certificate. Those procedures are specified; a full rotation drill was not performed.
+Residual and rotation: Compose secrets are file mounts, not a managed vault. Host/Docker administrators remain trusted, and Unix-socket administrative access is trusted inside the DB container. The runbook covers password/file replacement and restart, session-key rotation with invalidation, and renewal of the 90-day DB certificate. A full rotation drill was not performed.
 
 # F7: storage and recoverability
 
@@ -215,7 +215,7 @@ Output handling | Store data as text; React text interpolation encodes it at ren
 Exact CORS allowlist | Only the two explicit local origins receive credentialed CORS; a disallowed Origin receives 403
 CSRF protection | Mutation requests need a session-bound unpredictable token; sign-in is protected and rotates the token/session
 CSP and framing | Helmet policy restricts scripts to same origin, blocks objects and sets frame-ancestors none
-Other response headers | Appendix G explains every enabled security header, including legacy defaults and local-mode exceptions
+Other response headers | Appendix F explains every enabled security header, including legacy defaults and local-mode exceptions
 
 The exact original array-valued name plus ownerId payload now returns 400. Separate number, owner_id, impossible-date, long-name and invalid-contact probes also fail. A valid birthday continued to save. A missing, forged or non-ASCII CSRF token received 403 rather than an internal comparison error. Allowed-origin reads succeeded; untrusted-origin reads failed.
 
@@ -271,8 +271,6 @@ The regression suite also injects an audit-insert failure. The API returns 500 a
 
 This design resists an ordinary client and prevents the runtime role from rewriting existing audit entries. It does not make the database tamper-proof: a superuser can alter the table, and a fully compromised app can issue permitted birthday SQL without calling its audit wrapper. A production design should evaluate database-side auditing and an independently controlled append-only destination, with alerts and retention.
 
-The automated fixture cleanup uses direct database access and is labeled as test cleanup, not a user action. One interrupted test left synthetic rows that were explicitly removed and recorded. That distinction avoids pretending every administrative lab operation passed through the application audit flow.
-
 # F6: containers and software inventory
 
 The original app did not have a deployed application container to scan. The database container provided the actual before/after image comparison. Its server process already ran as postgres; a default exec shell being root is not evidence that the database process was root.
@@ -312,9 +310,7 @@ Recovery/runtime | Encrypted restore matches; EROFS write denied; audit survives
 
 The SQL injection probe returned no rows in both versions, consistent with parameterized queries. It is recorded as a negative test, not a confirmed vulnerability. The original PostgreSQL process was non-root. npm audits returned zero advisories even before remediation. The scanner's gosu and npm records were not claimed to be remote API exploits. The health endpoint leak was separated from the original generic error middleware.
 
-Browser verification found that the visual background covered the newly placed sign-out button. The UI layout was corrected and the real click test rerun. A Windows PowerShell compatibility problem in ACL setup was also corrected; the final backup creation/restore test passed. These observations are implementation feedback rather than findings against the original application.
-
-The after evidence includes redacted request/response transcripts, named assertions, screenshots with UTC capture metadata, runtime inspection and raw scanner JSON. Appendix C shows extracts; Appendix H identifies the embedded archive containing full recorded HTTP transcripts, complete raw tool files and original screenshots. It does not include active credentials or claim that a full eight hours elapsed for the injected-clock test. No independent ASVS certification or comprehensive penetration test is claimed.
+The after evidence includes redacted request/response transcripts, named assertions, screenshots with UTC capture metadata, runtime inspection and raw scanner JSON. Appendix C shows extracts; Appendix G identifies the embedded archive containing full recorded HTTP transcripts, complete raw tool files and original screenshots. It does not include active credentials or claim that a full eight hours elapsed for the injected-clock test. No independent ASVS certification or comprehensive penetration test is claimed.
 
 # Conditional legal and regulatory analysis
 
@@ -382,7 +378,7 @@ The practical lesson is that a usable app with zero npm advisories can still exp
 
 # Appendix C: selected raw evidence
 
-These extracts introduce the evidence. Appendix H contains the complete recorded HTTP transcripts and an embedded archive of raw outputs, with timestamps, headers and assertion names. The same files are in security/evidence.
+These extracts introduce the evidence. Appendix G contains the complete recorded HTTP transcripts and an embedded archive of raw outputs, with timestamps, headers and assertion names. The same files are in security/evidence.
 
 Source | Recorded output
 --- | ---
@@ -410,7 +406,9 @@ Official sources consulted September 21, 2026 local time. Inline numbers identif
 
 [6] Docker. Multi-stage builds.https://docs.docker.com/build/building/multi-stage/
 
-The chosen target is ASVS 5.0.0 Level 2: private contact records and reusable accounts justify more than a minimal first layer of protection [13]. Appendix F distinguishes that target from demonstrated coverage. Full Level 2 compliance has not been established.
+[14] OWASP. Web Security Testing Guide v4.2.Web application security testing categories
+
+[16] Gitleaks. Official scanning documentation.Git and directory scanning, redaction and official container usage
 
 # Appendix D: legal sources and evidence
 
@@ -428,7 +426,7 @@ The chosen target is ASVS 5.0.0 Level 2: private contact records and reusable ac
 
 [13] OWASP. ASVS 5.0.0, English verification chapters. Level 2 target; not a certification.https://github.com/OWASP/ASVS/tree/v5.0.0/5.0/en
 
-Primary assessment evidence: security/evidence/before contains original transcripts, screenshot, environment, DB posture and Trivy/npm outputs. security/evidence/after contains regression/browser outputs, runtime and audit proof, backup evidence, history check, final scans and app-sbom.cdx.json. security/verification.md maps each claim to those files. The final repository includes the PDF, source report text and operating/defense guides.
+Primary assessment evidence: security/evidence/before contains original transcripts, screenshot, environment, DB posture and Trivy/npm outputs. security/evidence/after contains regression/browser outputs, runtime and audit proof, backup evidence, history check, final scans and app-sbom.cdx.json. security/verification.md maps each claim to those files. The final repository includes the PDF, source report text and operating procedures.
 
 # Appendix E: AI disclosure
 
@@ -436,45 +434,9 @@ Primary assessment evidence: security/evidence/before contains original transcri
 
 OpenAI Codex assisted with reading the assignment, identifying risks, creating the threat model, writing and revising application/configuration/test code, operating the local lab, collecting evidence and drafting this report. AI-generated work was checked against observed results and source code before inclusion.
 
-Validation used real HTTP/database results, explicit assertions, unedited browser screenshots, an intentionally removed ownership predicate, raw image/dependency scans, Git history checks and a restored encrypted archive. Failed browser interaction and Windows ACL compatibility checks led to changes and reruns. The PDF was rendered for visual inspection. No fabricated screenshots, exploit outcomes, legal applicability, individual CVE exploitation or real-data breach is claimed.
+Validation used real HTTP/database results, explicit assertions, unedited browser screenshots, an intentionally removed ownership predicate, raw image/dependency scans, Git history checks and a restored encrypted archive. The PDF was rendered for visual inspection. No fabricated screenshots, exploit outcomes, legal applicability, individual CVE exploitation or real-data breach is claimed.
 
-# Appendix F: method and coverage
-
-Target: OWASP ASVS 5.0.0 Level 2. Private names, birthdates and contact details, together with reusable accounts, justify this target. It is a target for the eventual service, not an achieved compliance label. Full applicable Level 1 and Level 2 verification would be required to claim it [13]. Public browser transport, account lifecycle and other production controls remain open.
-
-WSTG v4.2 area followed [14] | Local procedure and evidence
---- | ---
-Configuration/deployment | Inspect original Compose, image inventory, TLS and permissions; compare hardened runtime and scanner outputs (F2/F6)
-Authentication and session management | Anonymous requests, valid/invalid login, cookie flags, logout, session rotation and injected-clock expiry (F1)
-Authorization | Two-account read/update/delete probes; remove owner predicate in a temporary copy and confirm failure (F1)
-Input validation/client-side behavior | Replay malformed payload, injection search, untrusted Origin and stored markup; verify positive saves and output text (F3)
-Error handling/business logic | Repeat pagination request; bounded throttle test; actual stopped database; audit-failure rollback (F4/F5)
-
-The baseline preceded remediation; the final review repeats relevant probes and records authorized success. Some controls have no HTTP equivalent: DB grants, TLS, container settings, audit durability and backups use SQL, process inspection or restore evidence. Absence of an original feature is established by source/configuration review, not by an invented failed attack. This is a scoped WSTG assessment, not exhaustive coverage.
-
-[14] OWASP WSTG v4.2.Web application security testing categories
-
-[13] ASVS level rationale.OWASP ASVS 5.0.0: verification levels
-
-# Appendix F: secret-sweep evidence
-
-Gitleaks 8.30.1 scanned every reachable ref in the whole fork (13 commits), then an export of all 752 nonignored working files. Both reports contained zero findings. A separate exact-value scan checked generated passwords, session/backup keys and private-key content across the whole fork: 663 unique historical blobs, with zero active-secret matches. These are dated observations before this documentation commit, not guarantees about future commits.
-
-The exported working tree excludes ignored local runtime secrets and dependency directories. Gitleaks used its built-in rules, no custom suppression and full redaction. It ran offline after the official image was downloaded, with history mounted read-only. Its image is pinned as ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f.
-
-The original birthday/birthday teaching default remains publicly visible in historical source and unrelated upstream lab examples. It is not a real generated credential and is never used by the hardened app. The current hardened db.js has no password fallback; setup creates random credentials in ignored files. There was no reason to rewrite the upstream teaching history. A future discovery of an actual exposed key requires revocation/rotation and coordinated history cleanup.
-
-General pattern scans can miss unusual formats, and Git patch scanning does not inspect pixels in screenshots or all binary content. The exact-value scan complements it, while original screenshots were visually checked for fictional data and absence of credentials. Neither scanner proves that every possible secret is absent. The final PDF embeds only the reviewed evidence directory, not local secret or backup files.
-
-Evidence file (after/) | Contents
---- | ---
-gitleaks-history.json / gitleaks-working.json | Raw redacted findings arrays: [] in both
-gitleaks-summary.json | Version, image digest, scope, commands and scan counts
-secret-history-check.json | Exact active-secret result and identified old teaching defaults
-
-[16] Gitleaks official documentation.Git and directory scanning, redaction and official container usage
-
-# Appendix G: browser response headers
+# Appendix F: browser response headers
 
 F3 enables Helmet defaults with explicit local-mode overrides. The actual values below are recorded in after/http-transcripts.json; the original transcript allows direct comparison. Explanations follow the official Helmet reference [15].
 
@@ -496,7 +458,7 @@ HSTS is intentionally absent in the loopback HTTP lab. The production option ena
 
 [15] Helmet header reference.https://helmet.js.org/
 
-# Appendix G: API headers and pairing
+# Appendix F: API headers and pairing
 
 API response field | Security meaning
 --- | ---
@@ -507,8 +469,6 @@ Set-Cookie flags | HttpOnly blocks script reads; SameSite=Strict limits cross-si
 RateLimit / RateLimit-Policy / Retry-After | Communicate the enforced request budget and retry delay; headers alone do not enforce it.
 X-Request-ID | Correlates a public error with a server log; it grants no authority.
 
-Date, Content-Type, Content-Length, ETag and connection fields carry ordinary protocol metadata; no separate security protection is claimed for them.
-
 ## Directly paired requests
 
 BASE-07 now replays the identical JSON with firstName=["ArrayValue"] and ownerId="ignored-owner": original 201, revised authenticated 400. BASE-05 uses the identical Origin https://untrusted.example.test and /api/birthdays?limit=1: original 200 with *, revised 403. BASE-02 repeats limit=10&amp;page=1: original 125 records, revised ten. BASE-09 repeats days=366&amp;limit=10: original 125, revised ten.
@@ -517,7 +477,7 @@ The health comparison now stops the real database in each version: the original 
 
 Full transcripts retain timestamps, request bodies, statuses and recorded response headers. Active passwords, cookies and CSRF values are omitted/redacted. Clock and rate-threshold injections remain labeled; no real eight-hour wait or sustained denial-of-service test is implied.
 
-# Appendix H: complete evidence package
+# Appendix G: complete evidence package
 
 Complete original and revised HTTP transcripts are included in the embedded evidence archive. They retain setup requests, request bodies and recorded response headers. Authentication material was redacted when captured. These are test-harness records, not packet captures of every network header.
 
